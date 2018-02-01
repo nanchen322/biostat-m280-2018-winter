@@ -130,7 +130,6 @@ table <- data.frame(n = N, method = Method, t_1 = NA, t_5 = NA, Gaussian = NA)
 distTypes = c("t1", "t5","gaussian") 
 nVals = seq(100, 500, by=100) 
 i <- 0 
-j <- 0 
 for (n in nVals) { 
   i <- i + 1 
   j <- 0 
