@@ -78,9 +78,8 @@ awk '{OFS = ","} {print $2, $1, $4}' /home/m280-data/hw1/merge-geno.bim >> /home
 head mendel_snpdef.txt
 ```
 **Comments: 1. add and append the first two lines 2. print col 2,1,4**
-    - Mendel's pedigree file is similar to the plink `fam` file but has format  
-    `Family ID`, `Person ID`, `Father ID`, `Mother ID`, `Sex` coded as M or F, `Twin Status`  
-    with each field separated by a comma. Write a Linux shell command to convert `merge-geno.fam` to Mendel pedigree file. Since twin status is not available in plink format, we put nothing for that field. Also Mendel limits Person ID to have length less than or equal to 8 characters, so we have to strip the string `T2DG` from the IDs. First few lines of the Mendel pedigree should look like
+
+    - Mendel's pedigree file is similar to the plink `fam` file but has format `Family ID`, `Person ID`, `Father ID`, `Mother ID`, `Sex` coded as M or F, `Twin Status` with each field separated by a comma. Write a Linux shell command to convert `merge-geno.fam` to Mendel pedigree file. Since twin status is not available in plink format, we put nothing for that field. Also Mendel limits Person ID to have length less than or equal to 8 characters, so we have to strip the string `T2DG` from the IDs. First few lines of the Mendel pedigree should look like
 ```{bash, echo=FALSE, eval=TRUE}
 awk '{OFS = ","} {print $1, $2, $3, $4, $5, $6}' /home/m280-data/hw1/merge-geno.fam | awk -F, -v sex="" '{OFS = ","} {if ($5 == 1) sex="M"; else sex="F"} {print $1, $2, $3, $4, sex, $6}' |sed 's/T2DG//g' | awk -F, '{OFS = ","} {for (i = 1; i <= NF; i++) {$i = ($i == 0 ? "": $i)}; print}' > /home/nanchen322/Biostat-m280-2018-winter/hw1/mendel_ped.txt
 head -20 mendel_ped.txt
@@ -99,7 +98,7 @@ for both methods.
 **Comments: Simulate data from three different distributions. Please see more details in runSim.R.**
 
 2. Modify the [`autoSim.R`](http://hua-zhou.github.io/teaching/biostatm280-2018winter/slides/02-linux/autoSim.R) script to run simulations with combinations of sample sizes `nVals = seq(100, 500, by=100)` and distributions `distTypes = c("gaussian", "t1", "t5")` and write output to appropriately named files. Use `rep = 50`, and `seed = 280`. 
-**Comments: Read in data from runSim.R and output to named txt files. Please see more details in autoSim.R.**
+**Comments: Read in data from runSim.R and run output to named txt files. Please see more details in autoSim.R.**
 
 3. Write an R script to collect simulation results from output files and print average MSEs in a table of format
 
