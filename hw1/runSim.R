@@ -41,5 +41,5 @@ for ( i in 1:rep) {
   s2 <- s2 + (m2-0)^2
 }
 
-outcome <- paste(s1/rep, s2/rep, sep = ", ")
+outcome <- c(s1/rep, s2/rep)
 outcome
