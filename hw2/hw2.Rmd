@@ -1,0 +1,93 @@
+---
+title: "hw2"
+author: "Nan Chen"
+date: "2/2/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+
+## Q1. Data Analysis  
+### 1. Exercise 7.3.4  
+- Explore the distribution of each of the x, y, and z variables in diamonds. What do you learn? Think about a diamond and how you might decide which dimension is the length, width, and depth.
+```{r}
+library(ggplot2)
+ggplot(data = diamonds, mapping = aes(x = x)) +
+  geom_histogram(binwidth = 0.1)
+
+ggplot(data = diamonds, mapping = aes(x = y)) +
+  geom_histogram(binwidth = 0.1) +
+  coord_cartesian(xlim = c(0, 10))
+
+ggplot(data = diamonds, mapping = aes(x = z)) +
+  geom_histogram(binwidth = 0.1) +
+  coord_cartesian(xlim = c(0, 8))
+```  
+
+**Comments: After histograms of x, y, z have been generated, I find all these three variables have several outliners and have the highest peak at left side. Also, according to x (~3.5-~9), y (~3.5-~9) and z (~2-~5) 's range, I think variable z is the depth, y is the length and x is the width.**  
+
+- Explore the distribution of price. Do you discover anything unusual or surprising? (Hint: Carefully think about the binwidth and make sure you try a wide range of values.)  
+```{r}
+ggplot(data = diamonds, mapping = aes(x = price)) +
+  geom_histogram(binwidth = 4.5) +
+  coord_cartesian(ylim = c(0, 80))
+```
+
+**Comments: The distribution of price is right skewed. The only surprising thing I can notice is that there are no counts at certain price.**  
+
+- How many diamonds are 0.99 carat? How many are 1 carat? What do you think is the cause of the difference?  
+```{r}
+diamonds %>%
+filter(carat == 0.99) %>%
+  summarise(n())
+
+diamonds %>%
+filter(carat == 1) %>%
+  summarise(n())
+```
+
+**Comments: There are only 23 diamonds which carat is 0.99, while there are 1558 diamonds which carat is 1. 0.99 carat diamonds are rarely made, so the price of 0.99 carat diamonds is higher than 1 carat diamonds. This is the reason that more 1 carat diamonds are sold than 0.99 carat diamonds.**  
+
+- Compare and contrast coord_cartesian() vs xlim() or ylim() when zooming in on a histogram. What happens if you leave binwidth unset? What happens if you try and zoom so only half a bar shows?  
+```{r}
+ggplot(data = diamonds, mapping = aes(x = carat)) +
+  geom_histogram() +
+  coord_cartesian(ylim = c(0, 100))
+```
+
+**Comments: coord_catesian does not remove unseen data points, while xlim and ylim removes unseen data points from histogram. If we leave binwidth unset, the histogram bars are combined together and cannot reavel useful information for us. **  
+
+### 2. Exercise 7.4.1  
+- What happens to missing values in a histogram? What happens to missing values in a bar chart? Why is there a difference?  
+```{r}
+diamonds2 <- diamonds %>%
+  mutate(y = ifelse(y < 3 | y > 20, NA, y))
+ggplot(data = diamonds2) +
+  geom_histogram(binwidth = 0.1, mapping = aes(x = y))
+
+diamonds2 <- diamonds %>%
+  mutate(y = ifelse(y < 3 | y > 20, NA, y))
+ggplot(data = diamonds2) +
+  geom_bar(mapping = aes(x = y))
+```
+
+**Comments: Missing values will be removed in a histogram. **  
+
+- What does na.rm = TRUE do in mean() and sum()?  
+```{r}
+diamonds2 <- diamonds %>%
+  mutate(y = ifelse(y < 3 | y > 20, NA, y))
+a <- mean(diamonds2$y, na.rm = FALSE)
+b <- sum(diamonds2$y, na.rm = TRUE)
+a
+b
+```
+
+**Comments: Missing values will not be calculated in mean() and sum(), so the output of mean() and sum() can both have actual values other than just NA.**  
+
+### 3. Exercise 7.5.1.1  
+- 
