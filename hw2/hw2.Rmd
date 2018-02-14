@@ -286,13 +286,36 @@ merge.geno.bim <- read_delim("/home/m280-data/hw1/merge-geno.bim",
                              delim = "\t", col_names = FALSE)
 merge.geno.fam <- read_delim("/home/m280-data/hw1/merge-geno.fam", delim = " ", 
                              col_names = FALSE)
+#rename variables
+merge.geno.bim <- merge.geno.bim %>%
+  rename(chromosome = X1) %>%
+  rename(snpid = X2) %>%
+  rename(gendist = X3) %>%
+  rename(bp = X4) %>%
+  rename(allelle1 = X5) %>%
+  rename(allelle2 = X6)
+merge.geno.fam <- merge.geno.fam %>%
+  rename(famid = X1) %>%
+  rename(personid = X2) %>%
+  rename(fid = X3) %>%
+  rename(mid = X4) %>%
+  rename(sex = X5) %>%
+  rename(affstat = X6)
 #count the number of persons in fam
 merge.geno.fam %>%
   summarise(persons = n())
 #count the number of SNPs in bim
 merge.geno.bim %>%
   summarise(SNPs = n())
+```  
+
+### 2. Which chromosomes does this data set contain? How many SNPs are in each chromosome?  
+```{r}
+merge.geno.bim %>%
+  group_by(chromosome) %>%
+  summarise(bp = n())
 ```
+
 
 
 
