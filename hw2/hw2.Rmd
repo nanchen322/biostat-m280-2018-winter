@@ -170,7 +170,66 @@ ggplot(data = mpg) +
 ggplot(data = mpg) +
   geom_beeswarm(mapping = aes(x = reorder(class, hwy, FUN = median), y = hwy))
 ```  
-**Comments: There are 2 methods. 1) geom_quasirandom that produces plots that resemble something between jitter and violin. There are several different methods that determine exactly how the random location of the points is generated. 2) geom_beeswarm creates a shape similar to a violin plot, but by offsetting the points.**
+**Comments: There are 2 methods. 1) geom_quasirandom that produces plots that resemble something between jitter and violin. There are several different methods that determine exactly how the random location of the points is generated. 2) geom_beeswarm creates a shape similar to a violin plot, but by offsetting the points.**  
+
+### 4. Exercise 7.5.2.1  
+- How could you rescale the count dataset above to more clearly show the distribution of cut within colour, or colour within cut?  
+```{r}
+library("viridis")
+diamonds %>%
+  count(color, cut) %>%
+  group_by(color) %>%
+  mutate(scale = n / sum(n)) %>%
+  ggplot(mapping = aes(x = color, y = cut)) +
+  geom_tile(mapping = aes(fill = scale)) +
+  scale_fill_viridis(limits = c(0, 1), option="plasma")
+
+diamonds %>%
+  count(color, cut) %>%
+  group_by(cut) %>%
+  mutate(scale = n / sum(n)) %>%
+  ggplot(mapping = aes(x = cut, y = color)) +
+  geom_tile(mapping = aes(fill = scale)) +
+  scale_fill_viridis(limits = c(0, 1), option="plasma")
+```  
+**Comments: We need to first group by colour and calcualte the proportion scale of cut in each cut group, then we can see clearly the distribution of cut within colour. limits = c(0, 1) is added because it is easy for us to compare the differences among each group. Also, the same thing could be done to get the distribution of colour within cut.**  
+
+- Use geom_tile() together with dplyr to explore how average flight delays vary by destination and month of year. What makes the plot difficult to read? How could you improve it?  
+```{r}
+library("nycflights13")
+flights %>%
+  group_by(dest, month) %>%
+  summarise(dep_delay = mean(dep_delay, na.rm = TRUE)) %>%
+  ggplot(mapping = aes(x = factor(month), y = dest, fill = dep_delay)) +
+  geom_tile() +
+  labs(x = "Month", y = "Destination", fill = "Departure Delay")
+
+#improved plots by viridis
+flights %>%
+  group_by(month, dest) %>%
+  summarise(dep_delay = mean(dep_delay, na.rm = TRUE)) %>%
+  group_by(dest) %>%
+  filter(n() == 12) %>%
+  ungroup() %>%
+  mutate(dest = fct_reorder(dest, dep_delay)) %>%
+  ggplot(aes(x = factor(month), y = dest, fill = dep_delay)) +
+  geom_tile() +
+  scale_fill_viridis(option = "plasma") +
+  labs(x = "Month", y = "Destination", fill = "Departure Delay")
+```  
+**Comments: 1) We can sort destinations by average delay to make the plot easy for us to read. 2) We can remove missing values and use virids for a better colour panel.**  
+
+- Why is it slightly better to use aes(x = color, y = cut) rather than aes(x = cut, y = color) in the example above?  
+```{r}
+diamonds %>% 
+  count(color, cut) %>%  
+  ggplot(mapping = aes(x = cut, y = color)) +
+    geom_tile(mapping = aes(fill = n))
+```  
+**Comments: It is better to use the categorical variable with longer labels or larger number of categories on the y axis.**
+
+
+
 
 
 
