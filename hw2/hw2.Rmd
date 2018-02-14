@@ -7,6 +7,7 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+install.packages("tidyverse")
 library(tidyverse)
 install.packages("nycflights13")
 install.packages("ggstance")
@@ -276,6 +277,22 @@ ggplot(data = diamonds) +
 **Comments: There is a strong relationship between x and y so the outliers are not extreme in either x or y. However, the bin plot will not reveal these outliers and mislead us that the largest x is the outlier.**
 
 
+## Q3. Genetic Data Analysis  
+### 1. How many persons are in the data set (statisticians call this n)? How many SNPs are in the data set (statisticians call this p)?  
+```{r}
+setwd("/home/m280-data/hw1/")
+#read in data as tibble
+merge.geno.bim <- read_delim("/home/m280-data/hw1/merge-geno.bim", 
+                             delim = "\t", col_names = FALSE)
+merge.geno.fam <- read_delim("/home/m280-data/hw1/merge-geno.fam", delim = " ", 
+                             col_names = FALSE)
+#count the number of persons in fam
+merge.geno.fam %>%
+  summarise(persons = n())
+#count the number of SNPs in bim
+merge.geno.bim %>%
+  summarise(SNPs = n())
+```
 
 
 
