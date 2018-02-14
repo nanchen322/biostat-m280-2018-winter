@@ -75,7 +75,8 @@ ggplot(data = diamonds2) +
   geom_histogram(binwidth = 0.1, mapping = aes(x = y))
 
 diamonds %>%
-  mutate(color = if_else(runif(n()) < 0.1, NA_character_, as.character(color))) %>%
+  mutate(color = if_else(runif(n()) < 0.1, NA_character_, 
+                         as.character(color))) %>%
   ggplot() +
   geom_bar(mapping = aes(x = color))
 ```
@@ -226,7 +227,56 @@ diamonds %>%
   ggplot(mapping = aes(x = cut, y = color)) +
     geom_tile(mapping = aes(fill = n))
 ```  
-**Comments: It is better to use the categorical variable with longer labels or larger number of categories on the y axis.**
+**Comments: It is better to use the categorical variable with longer labels or larger number of categories on the y axis.**  
+
+### 5. Exercise 7.5.3.1  
+- Instead of summarising the conditional distribution with a boxplot, you could use a frequency polygon. What do you need to consider when using cut_width() vs cut_number()? How does that impact a visualisation of the 2d distribution of carat and price?  
+```{r}
+# cut_width()
+ggplot(data = diamonds, 
+       mapping = aes(x = price,
+                     y = ..density.., 
+                     colour = cut_width(carat, 0.3))) +
+  geom_freqpoly()
+
+# cut_number()
+ggplot(data = diamonds, 
+       mapping = aes(x = price,
+                     y = ..density.., 
+                     colour = cut_number(carat, 10))) +
+  geom_freqpoly()
+```  
+**Comments: The number in each bin will be different if we use cut_width(). Since there are equal numbers in each bin, the plot looks the same if density is used for the y aesthetic.**  
+
+- Visualize the distribution of carat, partitioned by price.  
+```{r}
+ggplot(diamonds, aes(x = cut_number(price, 10), y = carat)) +
+  geom_boxplot() +
+  coord_flip() +
+  xlab("Price")
+```  
+**Comments: This box plot is partitioned into an 10 bins with the same number of observations.**
+
+- How does the price distribution of very large diamonds compare to small diamonds. Is it as you expect, or does it surprise you?  
+**Comments: The distribuyion of large diamonds varies a lot, but it does not surprise me because I think above a certain size other factors such as cut and colour will play more of a role in the price.**  
+
+- Combine two of the techniques you’ve learned to visualize the combined distribution of cut, carat, and price.  
+```{r}
+ggplot(diamonds, mapping = aes(color = cut_number(carat, 5),x = cut, 
+                               y = price)) +
+  geom_boxplot()
+```  
+
+- Two dimensional plots reveal outliers that are not visible in one dimensional plots. For example, some points in the plot below have an unusual combination of x and y values, which makes the points outliers even though their x and y values appear normal when examined separately.  
+```{r}
+ggplot(data = diamonds) +
+  geom_point(mapping = aes(x = x, y = y)) +
+  coord_cartesian(xlim = c(3, 12), ylim = c(3, 12))
+```  
+**Comments: There is a strong relationship between x and y so the outliers are not extreme in either x or y. However, the bin plot will not reveal these outliers and mislead us that the largest x is the outlier.**
+
+
+
 
 
 
