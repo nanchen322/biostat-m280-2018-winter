@@ -7,20 +7,18 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-install.packages("tidyverse")
-library(tidyverse)
-install.packages("nycflights13")
-install.packages("ggstance")
-install.packages("lvplot")
-install.packages("ggbeeswarm")
 ```
+#install.packages("tidyverse") library(tidyverse) install.packages("nycflights13")
+#install.packages("ggstance") install.packages("lvplot") install.packages("ggbeeswarm")
 
 
 ## Q1. Data Analysis  
 ### 1. Exercise 7.3.4  
 - Explore the distribution of each of the x, y, and z variables in diamonds. What do you learn? Think about a diamond and how you might decide which dimension is the length, width, and depth.
 ```{r}
-library(ggplot2)
+if (!"tidyverse" %in% rownames(installed.packages()))
+  install.packages("tidyverse", repos = "http://cra.rstudio.com/")
+library(tidyverse)
 ggplot(data = diamonds, mapping = aes(x = x)) +
   geom_histogram(binwidth = 0.1)
 
@@ -44,6 +42,7 @@ ggplot(data = diamonds, mapping = aes(x = price)) +
 
 - How many diamonds are 0.99 carat? How many are 1 carat? What do you think is the cause of the difference?  
 ```{r}
+library("tidyverse")
 diamonds %>%
   filter(carat >= 0.99, carat <= 1) %>%
   count(carat)
@@ -97,7 +96,9 @@ b
 ### 3. Exercise 7.5.1.1  
 - Use what you’ve learned to improve the visualisation of the departure times of cancelled vs. non-cancelled flights.  
 ```{r}
-library(nycflights13)
+if (!"nycflights13" %in% rownames(installed.packages()))
+  install.packages("nycflights13", repos = "http://cra.rstudio.com/")
+library("nycflights13")
 flights %>% 
   mutate(
     canceled = is.na(dep_time),
@@ -124,8 +125,9 @@ abline(lm(cut~carat), col="red")
 
 - Install the ggstance package, and create a horizontal boxplot. How does this compare to using coord_flip()?  
 ```{r}
-library(ggstance)
-
+if (!"ggstance" %in% rownames(installed.packages()))
+  install.packages("ggstance", repos = "http://cra.rstudio.com/")
+library("ggstance")
 diamonds %>%
   ggplot(aes(cut, carat)) +
   geom_boxplot() +
@@ -139,6 +141,8 @@ diamonds %>%
 
 - One problem with boxplots is that they were developed in an era of much smaller datasets and tend to display a prohibitively large number of “outlying values”. One approach to remedy this problem is the letter value plot. Install the lvplot package, and try using geom_lv() to display the distribution of price vs cut. What do you learn? How do you interpret the plots?  
 ```{r}
+if (!"lvplot" %in% rownames(installed.packages()))
+  install.packages("lvplot", repos = "http://cra.rstudio.com/")
 library(lvplot)
 ggplot(diamonds, aes(x = cut, y = price)) + 
   geom_lv()
@@ -162,6 +166,8 @@ ggplot(data = diamonds, mapping = aes(x = price, y = ..density..)) +
 
 - If you have a small dataset, it’s sometimes useful to use geom_jitter() to see the relationship between a continuous and categorical variable. The ggbeeswarm package provides a number of methods similar to geom_jitter(). List them and briefly describe what each one does.  
 ```{r}
+if (!"ggbeeswarm" %in% rownames(installed.packages()))
+  install.packages("ggbeeswarm", repos = "http://cra.rstudio.com/")
 library(ggbeeswarm)
 ggplot(data = mpg) +
   geom_quasirandom(mapping = aes(x = reorder(class, hwy, FUN = median), 
@@ -177,6 +183,8 @@ ggplot(data = mpg) +
 ### 4. Exercise 7.5.2.1  
 - How could you rescale the count dataset above to more clearly show the distribution of cut within colour, or colour within cut?  
 ```{r}
+if (!"viridis" %in% rownames(installed.packages()))
+  install.packages("viridis", repos = "http://cra.rstudio.com/")
 library("viridis")
 diamonds %>%
   count(color, cut) %>%
@@ -198,7 +206,6 @@ diamonds %>%
 
 - Use geom_tile() together with dplyr to explore how average flight delays vary by destination and month of year. What makes the plot difficult to read? How could you improve it?  
 ```{r}
-library("nycflights13")
 flights %>%
   group_by(dest, month) %>%
   summarise(dep_delay = mean(dep_delay, na.rm = TRUE)) %>%
@@ -280,7 +287,7 @@ ggplot(data = diamonds) +
 ## Q3. Genetic Data Analysis  
 ### 1. How many persons are in the data set (statisticians call this n)? How many SNPs are in the data set (statisticians call this p)?  
 ```{r}
-setwd("/home/m280-data/hw1/")
+
 #read in data as tibble
 merge.geno.bim <- read_delim("/home/m280-data/hw1/merge-geno.bim", 
                              delim = "\t", col_names = FALSE)
@@ -288,19 +295,12 @@ merge.geno.fam <- read_delim("/home/m280-data/hw1/merge-geno.fam", delim = " ",
                              col_names = FALSE)
 #rename variables
 merge.geno.bim <- merge.geno.bim %>%
-  rename(chromosome = X1) %>%
-  rename(snpid = X2) %>%
-  rename(gendist = X3) %>%
-  rename(bp = X4) %>%
-  rename(allelle1 = X5) %>%
-  rename(allelle2 = X6)
+  rename(chromosome = X1, snpid = X2, gendist = X3, bp = X4, allelle1 = X5, 
+         allelle2 = X6) 
+
 merge.geno.fam <- merge.geno.fam %>%
-  rename(famid = X1) %>%
-  rename(personid = X2) %>%
-  rename(fid = X3) %>%
-  rename(mid = X4) %>%
-  rename(sex = X5) %>%
-  rename(affstat = X6)
+  rename(famid = X1, personid = X2, fid = X3, mid = X4, sex = X5, affstat = X6)
+
 #count the number of persons in fam
 merge.geno.fam %>%
   summarise(persons = n())
@@ -323,7 +323,31 @@ merge.geno.bim %>%
   summarise(SNPs = n())
 ```  
 
-### 4. Convert merge-geno.bim to Mendel SNP definition file.
+### 4. Convert File 
+- Convert merge-geno.bim to Mendel SNP definition file
+```{r}
+merge.geno.bim1 <- merge.geno.bim %>%
+  select(snpid, chromosome, bp) %>%
+  unite(col = "", sep = ",", remove = TRUE)
+dfile <- 
+```
+
+
+- Convert merge-geno.fam to Mendel pedigree file  
+```{r}
+merge.geno.fam1 <- mutate(merge.geno.fam, 
+                      person_id_sub = substr(personid, 5, 13), 
+                      father_id_sub = substr(fid, 5, 13),
+                      mother_id_sub = substr(mid, 5, 13),
+                      affection_status_sub = substr(affstat, 5, 13),
+                      sex_sub = ifelse(sex == 1, "M", "F"))
+pfile <- write.table(merge.geno.fam1[, c("famid", "person_id_sub", 
+                                         "father_id_sub", "mother_id_sub", 
+                                         "sex_sub", "affection_status_sub")],
+              file = '/home/nanchen322/Biostat-m280-2018-winter/hw2/pfile.txt', 
+              sep = ",", na = "NA", row.names = FALSE, quote = FALSE)
+```
+
 
 
 
