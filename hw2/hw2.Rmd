@@ -27,6 +27,7 @@ ggplot(data = diamonds, mapping = aes(x = z)) +
   geom_histogram(binwidth = 0.1) +
   coord_cartesian(xlim = c(0, 8))
 ```  
+
 **Comments: 1) After histograms of x, y, z have been generated, I find all these three distributions have several outliners and have the highest peak at left side, which indicates that they are all right skewed. 2) All three distributions have have a bimodality. 3) Also, according to x (~3.5-~9), y (~3.5-~9) and z (~2-~5) 's range, I think variable z is the depth, y is the width and x is the length.**  
 
 - Explore the distribution of price. Do you discover anything unusual or surprising? (Hint: Carefully think about the binwidth and make sure you try a wide range of values.)  
@@ -34,7 +35,8 @@ ggplot(data = diamonds, mapping = aes(x = z)) +
 ggplot(data = diamonds, mapping = aes(x = price)) +
   geom_histogram(binwidth = 4.5) +
   coord_cartesian(ylim = c(0, 80))
-```
+```  
+
 **Comments: 1) The distribution of price is right skewed, and has many peaks. 2) One of the surprising thing I can notice is that there are no counts at certain price, such as $1500.**  
 
 - How many diamonds are 0.99 carat? How many are 1 carat? What do you think is the cause of the difference?  
@@ -48,7 +50,8 @@ diamonds %>%
    filter(carat >= 0.9, carat <= 1.1) %>%
    count(carat) %>%
    print(n = 20)
-```
+```  
+
 **Comments: There are only 23 diamonds which carat is 0.99, while there are 1558 diamonds which carat is 1. The reason more 1 carat diamonds sold than 0.99 carat diamonds is that some diamonds carat values are being “rounded up”. That is to say, the difference in value per carat is less expensive as general. This is can be confirmed by the second graph which lists the prices of diamionds from 0.9 carat to 1.1 carat.**  
 
 - Compare and contrast coord_cartesian() vs xlim() or ylim() when zooming in on a histogram. What happens if you leave binwidth unset? What happens if you try and zoom so only half a bar shows?  
@@ -60,7 +63,8 @@ ggplot(data = diamonds, mapping = aes(x = carat)) +
 ggplot(data = diamonds, mapping = aes(x = carat)) +
   geom_histogram() +
   ylim (0, 100)
-```
+```  
+
 **Comments: coord_catesian does not remove unseen data points, while xlim and ylim removes unseen data points from histogram. If we leave binwidth unset, the histogram bars are combined together and cannot reavel useful information for us. **  
 
 ### 2. Exercise 7.4.1  
@@ -76,7 +80,8 @@ diamonds %>%
                          as.character(color))) %>%
   ggplot() +
   geom_bar(mapping = aes(x = color))
-```
+```  
+
 **Comments: Missing values will be removed in a histogram. In geom_bar, missing value is treated as another category.**  
 
 - What does na.rm = TRUE do in mean() and sum()?  
@@ -87,7 +92,8 @@ a <- mean(diamonds2$y, na.rm = FALSE)
 b <- sum(diamonds2$y, na.rm = TRUE)
 a
 b
-```
+```  
+
 **Comments: Missing values will not be calculated in mean() and sum(), so the output of mean() and sum() can both have actual values other than just NA.**  
 
 ### 3. Exercise 7.5.1.1  
@@ -106,6 +112,7 @@ flights %>%
   ggplot() +
     geom_boxplot(mapping = aes(y = sched_dep_time, x = canceled))
 ```  
+
 **Comments: As we can see from the graph, the departure time of canceled flights is larger than that of scheduled flights.**  
 
 - What variable in the diamonds dataset is most important for predicting the price of a diamond? How is that variable correlated with cut? Why does the combination of those two relationships lead to lower quality diamonds being more expensive?  
@@ -118,6 +125,7 @@ plot(cut, carat, main="Cut VS Carat",
   	xlab="Cut ", ylab="Carat ", type="p")
 abline(lm(cut~carat), col="red")
 ```  
+
 **Comments: I think Carat is most important for predicting the price of a diamond. According to the fit line, we can see that the price decreases when the cut is from fair to ideal. **  
 
 - Install the ggstance package, and create a horizontal boxplot. How does this compare to using coord_flip()?  
@@ -134,6 +142,7 @@ diamonds %>%
   ggplot(aes(carat, cut)) +
   geom_boxploth()
 ```  
+
 **Comments: According to these two plots, they look the same. But in the aesthetics the x and y are flipped from the previous case.**  
 
 - One problem with boxplots is that they were developed in an era of much smaller datasets and tend to display a prohibitively large number of “outlying values”. One approach to remedy this problem is the letter value plot. Install the lvplot package, and try using geom_lv() to display the distribution of price vs cut. What do you learn? How do you interpret the plots?  
@@ -144,6 +153,7 @@ library(lvplot)
 ggplot(diamonds, aes(x = cut, y = price)) + 
   geom_lv()
 ```  
+
 **Comments: The boxes of the letter-value plot correspond to many more quantiles. And I think they can be useful for larger datasets as larger datasets can give precise estimates of quantiles beyond the quartiles.**  
 
 - Compare and contrast geom_violin() with a facetted geom_histogram(), or a coloured geom_freqpoly(). What are the pros and cons of each method?  
@@ -159,6 +169,7 @@ ggplot(data = diamonds, mapping = aes(x = price)) +
 ggplot(data = diamonds, mapping = aes(x = price, y = ..density..)) + 
   geom_freqpoly(mapping = aes(colour = cut), binwidth = 500)
 ```  
+
 **Comments: The  faceted geom_histogram and geom_violin have similar plots. It is easy for us to distinguish differences in the overall shape of the distributions (skewness, central values, variance, etc). However, it is difficult to look up which category has the highest density for a given price because we cannot compare y axis from the plots. The geom_freqpoly is better to visually see the trend between compared variables. For example, it is easy for us to tell which cut has the highest price. However, the weakness is the overlapping between the cut. It is hard to tell the relationship among different distributions.**  
 
 - If you have a small dataset, it’s sometimes useful to use geom_jitter() to see the relationship between a continuous and categorical variable. The ggbeeswarm package provides a number of methods similar to geom_jitter(). List them and briefly describe what each one does.  
@@ -175,6 +186,7 @@ ggplot(data = mpg) +
 ggplot(data = mpg) +
   geom_beeswarm(mapping = aes(x = reorder(class, hwy, FUN = median), y = hwy))
 ```  
+
 **Comments: There are 2 methods. 1) geom_quasirandom that produces plots that resemble something between jitter and violin. There are several different methods that determine exactly how the random location of the points is generated. 2) geom_beeswarm creates a shape similar to a violin plot, but by offsetting the points.**  
 
 ### 4. Exercise 7.5.2.1  
@@ -199,6 +211,7 @@ diamonds %>%
   geom_tile(mapping = aes(fill = scale)) +
   scale_fill_viridis(limits = c(0, 1), option="plasma")
 ```  
+
 **Comments: We need to first group by colour and calcualte the proportion scale of cut in each cut group, then we can see clearly the distribution of cut within colour. limits = c(0, 1) is added because it is easy for us to compare the differences among each group. Also, the same thing could be done to get the distribution of colour within cut.**  
 
 - Use geom_tile() together with dplyr to explore how average flight delays vary by destination and month of year. What makes the plot difficult to read? How could you improve it?  
@@ -223,6 +236,7 @@ flights %>%
   scale_fill_viridis(option = "plasma") +
   labs(x = "Month", y = "Destination", fill = "Departure Delay")
 ```  
+
 **Comments: 1) We can sort destinations by average delay to make the plot easy for us to read. 2) We can remove missing values and use virids for a better colour panel.**  
 
 - Why is it slightly better to use aes(x = color, y = cut) rather than aes(x = cut, y = color) in the example above?  
@@ -232,6 +246,7 @@ diamonds %>%
   ggplot(mapping = aes(x = cut, y = color)) +
     geom_tile(mapping = aes(fill = n))
 ```  
+
 **Comments: It is better to use the categorical variable with longer labels or larger number of categories on the y axis.**  
 
 ### 5. Exercise 7.5.3.1  
@@ -251,6 +266,7 @@ ggplot(data = diamonds,
                      colour = cut_number(carat, 10))) +
   geom_freqpoly()
 ```  
+
 **Comments: The number in each bin will be different if we use cut_width(). Since there are equal numbers in each bin, the plot looks the same if density is used for the y aesthetic.**  
 
 - Visualize the distribution of carat, partitioned by price.  
@@ -260,9 +276,11 @@ ggplot(diamonds, aes(x = cut_number(price, 10), y = carat)) +
   coord_flip() +
   xlab("Price")
 ```  
+
 **Comments: This box plot is partitioned into an 10 bins with the same number of observations.**
 
 - How does the price distribution of very large diamonds compare to small diamonds. Is it as you expect, or does it surprise you?  
+
 **Comments: The distribuyion of large diamonds varies a lot, but it does not surprise me because I think above a certain size other factors such as cut and colour will play more of a role in the price.**  
 
 - Combine two of the techniques you’ve learned to visualize the combined distribution of cut, carat, and price.  
@@ -278,11 +296,12 @@ ggplot(data = diamonds) +
   geom_point(mapping = aes(x = x, y = y)) +
   coord_cartesian(xlim = c(3, 12), ylim = c(3, 12))
 ```  
+
 **Comments: There is a strong relationship between x and y so the outliers are not extreme in either x or y. However, the bin plot will not reveal these outliers and mislead us that the largest x is the outlier.**
 
 
 ## Q3. Genetic Data Analysis  
-### 1. How many persons are in the data set (statisticians call this n)? How many SNPs are in the data set (statisticians call this p)?  
+#### 1. How many persons are in the data set (statisticians call this n)? How many SNPs are in the data set (statisticians call this p)?  
 ```{r}
 
 #read in data as tibble
@@ -301,21 +320,21 @@ merge.geno.bim %>%
   summarise(SNPs = n())
 ```  
 
-### 2. Which chromosomes does this data set contain? How many SNPs are in each chromosome?  
+#### 2. Which chromosomes does this data set contain? How many SNPs are in each chromosome?  
 ```{r}
 merge.geno.bim %>%
   group_by(chromosome) %>%
   summarise(SNPs = n())
 ```  
 
-### 3. MAP4 (microtubule-associated protein 4) is a gene on chromosome 3 spanning positions 47,892,180 bp – 48,130,769 bp. How many SNPs are located within MAP4 gene?  
+#### 3. MAP4 (microtubule-associated protein 4) is a gene on chromosome 3 spanning positions 47,892,180 bp – 48,130,769 bp. How many SNPs are located within MAP4 gene?  
 ```{r}
 merge.geno.bim %>%
   filter(chromosome == 3 & (bp >= 47892180 & bp <= 48130769)) %>%
   summarise(SNPs = n())
 ```  
 
-### 4. Convert File 
+#### 4. Convert File 
 - Convert merge-geno.bim to Mendel SNP definition file
 ```{r}
 merge.geno.bim1 <- merge.geno.bim %>%
@@ -337,15 +356,15 @@ merge.geno.fam1 <- mutate(merge.geno.fam,
                       father_id_sub = substr(fid, 5, 13),
                       mother_id_sub = substr(mid, 5, 13),
                       affection_status_sub = substr(affstat, 5, 13),
-                      sex_sub = ifelse(sex == 1, "M", "F"))
-pfile <- write.table(merge.geno.fam1[, c("famid", "person_id_sub", 
+                      sex_sub = if_else(sex == 1, "M", "F"))
+pfile1 <- write.table(merge.geno.fam1[, c("famid", "person_id_sub", 
                                          "father_id_sub", "mother_id_sub", 
-                                         "sex_sub", "affection_status_sub")],
-              file = 'pfile.txt', sep = ",", na = "NA", row.names = FALSE, 
-              quote = FALSE)
+                                         "sex_sub", "affection_status_sub")], 
+                     file = 'pfile.txt', sep = ",", na = "NA", 
+                     row.names = FALSE, quote = FALSE, col.names = FALSE)
 ```
 ```{bash}
-head pfile.txt
+head -20 pfile.txt
 ```
 
 
