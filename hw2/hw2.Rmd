@@ -8,9 +8,6 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
-#install.packages("tidyverse") library(tidyverse) install.packages("nycflights13")
-#install.packages("ggstance") install.packages("lvplot") install.packages("ggbeeswarm")
-
 
 ## Q1. Data Analysis  
 ### 1. Exercise 7.3.4  
@@ -289,17 +286,12 @@ ggplot(data = diamonds) +
 ```{r}
 
 #read in data as tibble
-merge.geno.bim <- read_delim("/home/m280-data/hw1/merge-geno.bim", 
-                             delim = "\t", col_names = FALSE)
-merge.geno.fam <- read_delim("/home/m280-data/hw1/merge-geno.fam", delim = " ", 
-                             col_names = FALSE)
-#rename variables
-merge.geno.bim <- merge.geno.bim %>%
-  rename(chromosome = X1, snpid = X2, gendist = X3, bp = X4, allelle1 = X5, 
-         allelle2 = X6) 
-
-merge.geno.fam <- merge.geno.fam %>%
-  rename(famid = X1, personid = X2, fid = X3, mid = X4, sex = X5, affstat = X6)
+merge.geno.bim <- read_tsv("/home/m280-data/hw1/merge-geno.bim", 
+                           col_names = c("chromosome", "snpid", "gendist", "bp",
+                                         "allelle1", "allelle2"))
+merge.geno.fam <- read_delim("/home/m280-data/hw1/merge-geno.fam", delim = " ",
+                             col_names = c("famid", "personid", "fid", "mid",
+                                         "sex", "affstat"))
 
 #count the number of persons in fam
 merge.geno.fam %>%
@@ -327,11 +319,16 @@ merge.geno.bim %>%
 - Convert merge-geno.bim to Mendel SNP definition file
 ```{r}
 merge.geno.bim1 <- merge.geno.bim %>%
-  select(snpid, chromosome, bp) %>%
-  unite(col = "", sep = ",", remove = TRUE)
-dfile <- 
+  select(snpid, chromosome, bp)
+lines <- c("    2.40 = FILE FORMAT VERSION NUMBER.", 
+           "8348674 = NUMBER OF SNPS LISTED HERE.")
+writeLines(lines, "dfile.txt", sep = "\n")
+dfile1 <- write_delim(merge.geno.bim1, 'dfile.txt', delim = ",", na = "NA", 
+                      append = TRUE, col_names = FALSE)
 ```
-
+```{bash}
+head dfile.txt
+```
 
 - Convert merge-geno.fam to Mendel pedigree file  
 ```{r}
@@ -344,8 +341,11 @@ merge.geno.fam1 <- mutate(merge.geno.fam,
 pfile <- write.table(merge.geno.fam1[, c("famid", "person_id_sub", 
                                          "father_id_sub", "mother_id_sub", 
                                          "sex_sub", "affection_status_sub")],
-              file = '/home/nanchen322/Biostat-m280-2018-winter/hw2/pfile.txt', 
-              sep = ",", na = "NA", row.names = FALSE, quote = FALSE)
+              file = 'pfile.txt', sep = ",", na = "NA", row.names = FALSE, 
+              quote = FALSE)
+```
+```{bash}
+head pfile.txt
 ```
 
 
