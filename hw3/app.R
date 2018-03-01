@@ -16,6 +16,11 @@ lapayroll1$Totcost = abs(as.numeric(gsub("\\$", "",
 lapayroll1$Healthcost = abs(as.numeric(gsub("\\$", "", 
                                         lapayroll1$Average.Health.Cost)))
 lapayroll1 <- lapayroll1[, -c(4,5,6,7,8,9)]
+names(lapayroll1)[2] <- "Department"
+names(lapayroll1)[3] <- "Job"
+
+#delete large numbers and NA
+lapayroll1 <- lapayroll1[complete.cases(lapayroll1),]
 
 # save as RDS file
 saveRDS(lapayroll1, file = "lapayroll1.rds")
@@ -91,8 +96,7 @@ server <- function(input, output) {
   output$table_Q3 <- renderTable({
     data_Q3 <- LApayroll %>%
       filter(Year == input$Year) %>%
-      select(Totpay, Basepay, Overpay, Otherpay, Department.Title, 
-             Job.Class.Title) %>%
+      select(Totpay, Basepay, Overpay, Otherpay, Department, Job) %>%
       arrange(desc(Totpay))
       head(data_Q3, n = input$n1)
   })
@@ -101,32 +105,39 @@ server <- function(input, output) {
   output$table_Q4 <- renderTable({
     if (input$Method == "Median") {
       data_median_Q4 <- LApayroll %>% filter(Year == input$Year) %>%
-        group_by(Department.Title) %>%
+        group_by(Department) %>%
         summarise(MedianTotal = median(Totpay, na.rm = TRUE),
                   MedianBase = median(Basepay, na.rm = TRUE),
                   MedianOver = median(Overpay, na.rm = TRUE),
                   MedianOther = median(Otherpay, na.rm = TRUE)) %>%
         arrange(desc(MedianTotal)) %>%
-        select(Department.Title, MedianTotal, MedianBase, MedianOver, 
-               MedianOther)
+        select(Department, MedianTotal, MedianBase, MedianOver, MedianOther)
       head(data_median_Q4, n = input$n2)
     }else{
-      
+      data_mean_Q4 <- LApayroll %>% filter(Year == input$Year) %>%
+        group_by(Department) %>%
+        summarise(MeanTotal = mean(Totpay, na.rm = TRUE),
+                  MeanBase = mean(Basepay, na.rm = TRUE),
+                  MeanOver = mean(Overpay, na.rm = TRUE),
+                  MeanOther = mean(Otherpay, na.rm = TRUE)) %>%
+        arrange(desc(MeanTotal)) %>%
+        select(Department, MeanTotal, MeanBase, MeanOver, MeanOther)
+      head(data_mean_Q4, n = input$n2)
     }
-      
-      
-      
-      
-    data_Q4 <- LApayroll %>%
-      filter(Year == input$Year) %>%
-      select(Totpay, Basepay, Overpay, Otherpay, Department.Title, 
-             Job.Class.Title) %>%
-      arrange(desc(Totpay))
-    head(data_Q3, n = input$n1)
+      })
+  
+  output$table_Q5 <- renderTable({
+    data_Q5 <- LApayroll %>%
+      filter(Year == input$Year) %>% 
+      group_by(Department) %>%
+      arrange(desc(Totcost)) %>%
+      select(Department, Totcost, Totpay, Basepay, Overpay, Otherpay)
+    
+    head(data_Q5, n = input$n2)
+    
   })
   
 }
-
 # Run the application 
 shinyApp(ui = ui, server = server)
 
