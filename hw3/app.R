@@ -60,7 +60,7 @@ ui <- fluidPage(
       
       # Output: plot and table for data summary ----
       tabsetPanel(type = "tabs",
-                  tabPanel("LA Total Payroll Plot", plotOutput(barPlot)),
+                  tabPanel("LA Total Payroll Plot", plotOutput("barPlot")),
                   
                   tabPanel("Who Earned Most", tableOutput("table_Q3")),
                   
@@ -78,17 +78,51 @@ ui <- fluidPage(
 server <- function(input, output) {
 
   output$barPlot <- renderPlot({
-    ggplot(pay2, aes(x = Year, y = Type, fill = variable)) +
+    ggplot(pay2, aes(x = Year, y = value / 1000000, fill = variable)) +
     geom_col() +
-    labs(title = "Total payroll by LA City")
+    labs(x = "Year", y = "Pay(million)") +
+    scale_fill_manual(values = c("#D55E00", "#009E73", "#0072B2"),
+                      name="Type of Pay",
+                      breaks=c("TotBasepay", "TotOverpay", "TotOtherpay"),
+                      labels=c("Total Basepay", "Total Overtimepay", 
+                                 "Total Otherpay"))
   })
   
-  output$table1 <- renderTable({
-    head(aaa, n = input$n1)
+  output$table_Q3 <- renderTable({
+    data_Q3 <- LApayroll %>%
+      filter(Year == input$Year) %>%
+      select(Totpay, Basepay, Overpay, Otherpay, Department.Title, 
+             Job.Class.Title) %>%
+      arrange(desc(Totpay))
+      head(data_Q3, n = input$n1)
   })
   
-  output$table2 <- renderTable({
-    head(aaa, n = input$n2)
+  #choose a method
+  output$table_Q4 <- renderTable({
+    if (input$Method == "Median") {
+      data_median_Q4 <- LApayroll %>% filter(Year == input$Year) %>%
+        group_by(Department.Title) %>%
+        summarise(MedianTotal = median(Totpay, na.rm = TRUE),
+                  MedianBase = median(Basepay, na.rm = TRUE),
+                  MedianOver = median(Overpay, na.rm = TRUE),
+                  MedianOther = median(Otherpay, na.rm = TRUE)) %>%
+        arrange(desc(MedianTotal)) %>%
+        select(Department.Title, MedianTotal, MedianBase, MedianOver, 
+               MedianOther)
+      head(data_median_Q4, n = input$n2)
+    }else{
+      
+    }
+      
+      
+      
+      
+    data_Q4 <- LApayroll %>%
+      filter(Year == input$Year) %>%
+      select(Totpay, Basepay, Overpay, Otherpay, Department.Title, 
+             Job.Class.Title) %>%
+      arrange(desc(Totpay))
+    head(data_Q3, n = input$n1)
   })
   
 }
