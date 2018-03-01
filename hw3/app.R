@@ -1,6 +1,5 @@
 library(tidyverse)
 library(ggplot2)
-library(magrittr)
 library(shiny)
 
 lapayroll <- read.csv("/home/m280-data/la_payroll/LA_City_Employee_Payroll.csv")
@@ -19,7 +18,7 @@ lapayroll1 <- lapayroll1[, -c(4,5,6,7,8,9)]
 names(lapayroll1)[2] <- "Department"
 names(lapayroll1)[3] <- "Job"
 
-#delete large numbers and NA
+#delete large numbers
 lapayroll1 <- lapayroll1[complete.cases(lapayroll1),]
 
 # save as RDS file
@@ -65,7 +64,7 @@ ui <- fluidPage(
     ),
     # Main panel for displaying outputs ----
     mainPanel(
-      
+    h3("By: Nan Chen", align = "Right"),
       # Output: plot and table for data summary ----
       tabsetPanel(type = "tabs",
                   tabPanel("LA Total Payroll Plot", plotOutput("barPlot")),
@@ -100,52 +99,49 @@ server <- function(input, output) {
   })
   
   output$table_Q3 <- renderTable({
-    data_Q3 <- LApayroll %>%
+    LApayroll %>%
       filter(Year == input$Year) %>%
       select(Totpay, Basepay, Overpay, Otherpay, Department, Job) %>%
-      arrange(desc(Totpay))
-      head(data_Q3, n = input$n1)
+      arrange(desc(Totpay)) %>%
+      head(n = input$n1)
   })
   
   #choose a method
   output$table_Q4 <- renderTable({
     if (input$Method == "Median") {
-      data_median_Q4 <- LApayroll %>% filter(Year == input$Year) %>%
+      LApayroll %>% filter(Year == input$Year) %>%
         group_by(Department) %>%
         summarise(MedianTotal = median(Totpay, na.rm = TRUE),
                   MedianBase = median(Basepay, na.rm = TRUE),
                   MedianOver = median(Overpay, na.rm = TRUE),
                   MedianOther = median(Otherpay, na.rm = TRUE)) %>%
         arrange(desc(MedianTotal)) %>%
-        select(Department, MedianTotal, MedianBase, MedianOver, MedianOther)
-      head(data_median_Q4, n = input$n2)
+        select(Department, MedianTotal, MedianBase, MedianOver, MedianOther) %>%
+        head(n = input$n2)
     }else{
-      data_mean_Q4 <- LApayroll %>% filter(Year == input$Year) %>%
+      LApayroll %>% filter(Year == input$Year) %>%
         group_by(Department) %>%
         summarise(MeanTotal = mean(Totpay, na.rm = TRUE),
                   MeanBase = mean(Basepay, na.rm = TRUE),
                   MeanOver = mean(Overpay, na.rm = TRUE),
                   MeanOther = mean(Otherpay, na.rm = TRUE)) %>%
         arrange(desc(MeanTotal)) %>%
-        select(Department, MeanTotal, MeanBase, MeanOver, MeanOther)
-      head(data_mean_Q4, n = input$n2)
+        select(Department, MeanTotal, MeanBase, MeanOver, MeanOther) %>%
+        head(n = input$n2)
     }
       })
   
   output$table_Q5 <- renderTable({
-    data_Q5 <- LApayroll %>%
+    LApayroll %>%
       filter(Year == input$Year) %>% 
       group_by(Department) %>%
       summarise(
-        sumTotcost = sum(Totcost), sumTotpay = sum(Totpay),
-        sumBasepay = sum(Basepay), sumOverpay = sum(Overpay),
-        sumOtherpay = sum(Otherpay)
+        sumTotcost = sum(Totcost), sumBasepay = sum(Basepay), 
+        sumOverpay = sum(Overpay), sumOtherpay = sum(Otherpay)
       ) %>%
       arrange(desc(sumTotcost)) %>%
-      select(Department, sumTotcost, sumTotpay, sumBasepay, 
-             sumOverpay, sumOtherpay)
-    
-    head(data_Q5, n = input$n2)
+      select(Department, sumTotcost, sumBasepay, sumOverpay, sumOtherpay) %>%
+      head(n = input$n2)
     
   })
   
@@ -159,11 +155,6 @@ server <- function(input, output) {
       geom_point() +
       geom_smooth()
   })
-  
-  
-  
-  
-  
   
 }
 # Run the application 
