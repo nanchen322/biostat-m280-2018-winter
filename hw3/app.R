@@ -35,7 +35,6 @@ pay2 <- LApayroll %>% select(Year, Basepay, Overpay, Otherpay) %>%
              gather(TotBasepay, TotOverpay, TotOtherpay, key = "variable", 
                     value = "value")
 
-
 # Define UI for dataset viewer app ----
 ui <- fluidPage(
   
@@ -49,7 +48,7 @@ ui <- fluidPage(
       # Input: Selector for choosing dataset ----
       selectInput(inputId = "Year",
                   label = "Year:",
-                  choices = c("2017", "2014", "2015", "2016", "2013")),
+                  choices = c("2017", "2016", "2015", "2014", "2013")),
       numericInput(inputId = "n1",
                    label = "Number of employees to view:",
                    value = 10),
@@ -58,7 +57,11 @@ ui <- fluidPage(
                    value = 5),
       radioButtons(inputId = "Method",
                   label = "Choose a method:",
-                  choices = c("Median", "Mean"))
+                  choices = c("Median", "Mean")),
+      textInput(inputId = "Department",
+                label = "Department:",
+                value = "Police (LAPD)")
+     
     ),
     # Main panel for displaying outputs ----
     mainPanel(
@@ -73,7 +76,10 @@ ui <- fluidPage(
                            tableOutput("table_Q4")),
                   
                   tabPanel("Which Department Cost Most",
-                           tableOutput("table_Q5"))
+                           tableOutput("table_Q5")),
+                  
+                  tabPanel("Healthcost Trend over Years",
+                           plotOutput("smoothPlot"))
                   )
       
     )
@@ -130,14 +136,37 @@ server <- function(input, output) {
     data_Q5 <- LApayroll %>%
       filter(Year == input$Year) %>% 
       group_by(Department) %>%
-      arrange(desc(Totcost)) %>%
-      select(Department, Totcost, Totpay, Basepay, Overpay, Otherpay)
+      summarise(
+        sumTotcost = sum(Totcost), sumTotpay = sum(Totpay),
+        sumBasepay = sum(Basepay), sumOverpay = sum(Overpay),
+        sumOtherpay = sum(Otherpay)
+      ) %>%
+      arrange(desc(sumTotcost)) %>%
+      select(Department, sumTotcost, sumTotpay, sumBasepay, 
+             sumOverpay, sumOtherpay)
     
     head(data_Q5, n = input$n2)
     
   })
   
+  output$smoothPlot <- renderPlot({
+    health6 <- LApayroll %>% filter(Department == input$Department) %>%
+      group_by(Year) %>%
+      summarise(TotHealthcost = sum(Healthcost, na.rm = TRUE)) %>%
+      select(Year, TotHealthcost)
+    ggplot(health6, aes(x = Year, y = TotHealthcost / 1000000)) +
+      labs(x = "Year", y = "Health Cost (million)") +
+      geom_point() +
+      geom_smooth()
+  })
+  
+  
+  
+  
+  
+  
 }
 # Run the application 
 shinyApp(ui = ui, server = server)
+
 
