@@ -1,6 +1,7 @@
 library(tidyverse)
 library(ggplot2)
 library(magrittr)
+library(shiny)
 
 lapayroll <- read.csv("/home/m280-data/la_payroll/LA_City_Employee_Payroll.csv")
 lapayroll1 <- lapayroll[, c(2, 3, 6, 16, 17, 22, 24, 30, 33)]
@@ -19,6 +20,8 @@ lapayroll1 <- lapayroll1[, -c(4,5,6,7,8,9)]
 # save as RDS file
 saveRDS(lapayroll1, file = "lapayroll1.rds")
 LApayroll <- readRDS(file = "lapayroll1.rds")
+
+#generate a new dataset to show LA payroll (Q1.2)
 pay2 <- LApayroll %>% select(Year, Basepay, Overpay, Otherpay) %>%
               group_by(Year) %>%
               summarise(TotBasepay = sum(Basepay, na.rm = TRUE),
@@ -28,7 +31,6 @@ pay2 <- LApayroll %>% select(Year, Basepay, Overpay, Otherpay) %>%
                     value = "value")
 
 
-library(shiny)
 # Define UI for dataset viewer app ----
 ui <- fluidPage(
   
@@ -37,8 +39,6 @@ ui <- fluidPage(
   
   # Sidebar layout with a input and output definitions ----
   sidebarLayout(
-    
-    # Sidebar panel for inputs ----
     sidebarPanel(
       
       # Input: Selector for choosing dataset ----
@@ -51,7 +51,7 @@ ui <- fluidPage(
       numericInput(inputId = "n2",
                    label = "Number of departments to view:",
                    value = 5),
-      selectInput(inputId = "Method",
+      radioButtons(inputId = "Method",
                   label = "Choose a method:",
                   choices = c("Median", "Mean"))
     ),
@@ -59,10 +59,17 @@ ui <- fluidPage(
     mainPanel(
       
       # Output: plot and table for data summary ----
-      plotOutput("barPlot"),
-      tableOutput("table1"),
-      tableOutput("table2"),
-      tableOutput("table3")
+      tabsetPanel(type = "tabs",
+                  tabPanel("LA Total Payroll Plot", plotOutput(barPlot)),
+                  
+                  tabPanel("Who Earned Most", tableOutput("table_Q3")),
+                  
+                  tabPanel("Which Department Earn Most", 
+                           tableOutput("table_Q4")),
+                  
+                  tabPanel("Which Department Cost Most",
+                           tableOutput("table_Q5"))
+                  )
       
     )
   )
@@ -80,8 +87,8 @@ server <- function(input, output) {
     head(aaa, n = input$n1)
   })
   
-  output$table1 <- renderTable({
-    head(aaa, n = input$n1)
+  output$table2 <- renderTable({
+    head(aaa, n = input$n2)
   })
   
 }
