@@ -2,28 +2,6 @@ library(tidyverse)
 library(ggplot2)
 library(shiny)
 
-setwd("/home/nanchen322/Biostat-m280-2018-winter/hw3/LA-payroll2017/")
-lapayroll <- read.csv("/home/m280-data/la_payroll/LA_City_Employee_Payroll.csv")
-lapayroll1 <- lapayroll[, c(2, 3, 6, 16, 17, 22, 24, 30, 33)]
-# substract dollar sign
-lapayroll1$Totpay = abs(as.numeric(gsub("\\$", "", lapayroll1$Total.Payments)))
-lapayroll1$Basepay = abs(as.numeric(gsub("\\$", "", lapayroll1$Base.Pay)))
-lapayroll1$Overpay = abs(as.numeric(gsub("\\$", "", lapayroll1$Overtime.Pay)))
-lapayroll1$Otherpay = abs(as.numeric(gsub("\\$", "", 
-                                      lapayroll1$Other.Pay..Payroll.Explorer)))
-lapayroll1$Totcost = abs(as.numeric(gsub("\\$", "", 
-                                     lapayroll1$Average.Benefit.Cost)))
-lapayroll1$Healthcost = abs(as.numeric(gsub("\\$", "", 
-                                        lapayroll1$Average.Health.Cost)))
-lapayroll1 <- lapayroll1[, -c(4,5,6,7,8,9)]
-names(lapayroll1)[2] <- "Department"
-names(lapayroll1)[3] <- "Job"
-
-#delete large numbers
-lapayroll1 <- lapayroll1[complete.cases(lapayroll1),]
-
-# save as RDS file
-saveRDS(lapayroll1, file = "lapayroll1.rds")
 LApayroll <- readRDS(file = "lapayroll1.rds")
 
 #generate a new dataset to show LA payroll (Q1.2)
