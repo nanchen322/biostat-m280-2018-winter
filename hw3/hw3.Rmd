@@ -1,0 +1,182 @@
+---
+title: "HW3"
+author: "Nan Chen"
+date: "2/28/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+####Q1. LA City Employee Payroll
+Shiny App Website: https://nan-chen2018.shinyapps.io/la-payroll2017/
+
+####Q2. LA City Parking War
+```{r}
+if (!"DBI" %in% rownames(installed.packages()))  
+      install.packages("DBI", repos = "http://cran.rstudio.com/")
+if (!"RSQLite" %in% rownames(installed.packages()))  
+      install.packages("RSQLite", repos = "http://cran.rstudio.com/") 
+if (!"tidyverse" %in% rownames(installed.packages()))  
+      install.packages("tidyverse", repos = "http://cran.rstudio.com/")
+if (!"dplyr" %in% rownames(installed.packages()))  
+      install.packages("dplyr", repos = "http://cran.rstudio.com/")
+library(DBI) 
+library(RSQLite)
+library(tidyverse)
+library(dplyr)
+```
+
+```{r}
+# read in data from SQLite
+con <- dbConnect(RSQLite::SQLite(), 
+                "/home/m280-data/la_parking/LA_Parking_Citations_Extra.sqlite")
+
+# show dataset name in con, "latix"
+dbListTables(con)
+
+# deposit latix to R
+latix <- dplyr::tbl(con, "latix")
+```
+
+1. How many tickets are in this data set? Which time period do these tickets span? Which years have most data?
+
+```{r}
+latix %>% filter(!is.na(Ticket_number)) %>%
+  count()
+```
+
+* There are `4044338` tickets in this dataset after removing NA values. 
+
+```{r}
+# remove missing dates
+date <- latix %>% filter(!is.na(Issue_Year), !is.na(Issue_Month), 
+                         !is.na(Issue_Day), !is.na(Issue_Hour),
+                         !is.na(Issue_Minute), !is.na(Issue_Wday)) 
+# tickets time span
+date %>% distinct(Issue_Year, Issue_Month, Issue_Day, Issue_Hour, 
+                  Issue_Minute) %>%
+  arrange(desc(Issue_Year), desc(Issue_Month), desc(Issue_Day), 
+          desc(Issue_Hour), desc(Issue_Minute)) %>%
+  collect() %>% slice(c(1, n()))
+```
+
+* These pictures span from `2010-04-27 21:40` to `2017-12-30 01:41`.
+
+```{r}
+date %>% filter(!is.na(Issue_Year)) %>% group_by(Issue_Year) %>%
+  summarise(count = n()) %>% arrange(desc(count)) %>% head(1)
+```
+
+* Year `2015` has most data. 
+
+2. When (which hour, weekday, month day, and month) are you most likely to get a ticket and when are you least likely to get a ticket?
+
+```{r}
+# hour
+date %>% group_by(Issue_Hour) %>% 
+  summarise(count = n()) %>% arrange(desc(count)) %>%
+  collect() %>% slice(c(1, n()))
+```
+
+* It most likely to get a ticket at hour `12` and least likely to get a ticket at hour `5`. 
+
+```{r}
+# weekday
+date %>% group_by(Issue_Wday) %>% 
+  summarise(count = n()) %>% arrange(desc(count)) %>%
+  collect() %>% slice(c(1, n()))
+```
+
+* It most likely to get a ticket on `Tuesday` and least likely to get a ticket on `Saturday`. 
+
+```{r}
+# day
+date %>% group_by(Issue_Day) %>% 
+  summarise(count = n()) %>% arrange(desc(count)) %>%
+  collect() %>% slice(c(1, n()))
+```
+
+* It most likely to get a ticket on day `22` and least likely to get a ticket on day `31`. 
+
+```{r}
+# month
+date %>% group_by(Issue_Month) %>% 
+  summarise(count = n()) %>% arrange(desc(count)) %>%
+  collect() %>% slice(c(1, n()))
+```
+
+* It most likely to get a ticket in `March` and least likely to get a ticket in `November`. 
+
+3. Which car makes received most citations?
+
+```{r}
+# remove NA
+car <- latix %>% filter(!is.na(Make)) 
+car %>% group_by(Make) %>%
+  summarise(count = n()) %>% arrange(desc(count)) %>% head(1)
+```
+
+* `TOYOTA` received most citations. 
+
+4. How many different colors of cars were ticketed? Which color attracted most tickets?
+
+```{r}
+# remove NA
+color <- latix %>% filter(!is.na(Color))
+# number of colors
+color1 <- color %>% group_by(Color) %>% 
+  summarise(count = n()) %>% arrange(desc(count)) 
+summarise(color1, n())
+# color that most attracted tickets
+color1 %>% head(1)
+```
+
+* There are `65` different colors of cars were ticketed. The `Black` one attracted most tickets.
+
+5. What are the most common ticket types?
+
+```{r}
+type <- latix %>% filter(!is.na(Violation_Description))
+type %>% group_by(Violation_Description) %>% summarise(count = n()) %>%
+  arrange(desc(count)) %>% head(1)
+```
+
+* The most common ticket type is `No Park/Street Clean`.
+
+6. How much money was collected on parking tickets in 2015 and 2016?
+
+```{r}
+latix %>% select(Fine_amount, Issue_Year) %>%
+  filter(!is.na(Fine_amount), !is.na(Issue_Year), Issue_Year >= 2015, 
+         Issue_Year <= 2016) %>% 
+  summarise(total = sum(Fine_amount, na.rm = TRUE))
+```
+
+* The amount of `$274242930` was collected on parking tickets between 2015 and 2016.
+
+7. Which state has the highest fine amount?
+
+```{r}
+latix %>% select(RP_State_Plate, Fine_amount) %>% group_by(RP_State_Plate) %>%
+  summarise(total = sum(Fine_amount, na.rm = TRUE)) %>%
+  arrange(desc(total)) %>% head(1)
+```
+
+* `CA` has the highest fine amount.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
