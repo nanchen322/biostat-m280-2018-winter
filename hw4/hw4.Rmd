@@ -1,0 +1,59 @@
+---
+title: "hw4"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+---
+title: "hw4"
+output: html_document
+author: Nan Chen
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# access the Yarn cluster
+options(scipen=200)
+if (!require("pacman"))  
+  install.packages("pacman", repos = "http://cran.us.r-project.org/")
+library(pacman)
+p_load("sparklyr", "dplyr", "ggplot2", "ggmap", "maps", "mapdata", 
+           "devtools", "ggrepel", "lubridate", "RColorBrewer")
+Sys.setenv(SPARK_HOME="/usr/lib/spark")
+config <- spark_config()
+sc <- spark_connect(master = "yarn-client", config = config)
+
+# connect the Hive tables
+flights_tbl <- tbl(sc, 'flights')
+airlines_tbl <- tbl(sc, 'airlines')
+airports_tbl <- tbl(sc, 'airports')
+```
+
+1. Map the top 10 busiest airports. Size of dots should reflect the number of flights through that destination.  
+```{r}
+# extract data in 2008
+flights2008 <- flights_tbl %>% filter(origin != "Origin") %>%
+  select(year, origin, dest) %>% filter(year = 2008)
+
+airports <- airports_tbl %>% select(name, faa, lat, lon)
+
+dest <- left_join(flights2008, airports, by = c("dest" = "faa")) %>%
+  group_by(dest) %>% summarise(n = n()) %>% collect() %>% arrange(desc(n)) %>%
+  select("airport" = dest, n)
+
+origin <- left_join(flights2008, airports, by = c("origin" = "faa")) %>%
+  group_by(origin) %>% summarise(n = n()) %>% collect() %>% arrange(desc(n)) %>%
+  select("airport" = origin, n)
+
+combine <- bind_rows(dest, origin) %>%
+  group_by(airport) %>% summarise(sum = sum(n)) %>% arrange(desc(sum)) %>%
+  head(10)
+
+
+```
