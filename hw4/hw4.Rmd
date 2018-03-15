@@ -23,11 +23,8 @@ sc <- spark_connect(master = "yarn-client", config = config)
 ```{r}
 # connect the Hive tables
 flights_tbl <- tbl(sc, 'flights')
-flights_tbl %>% print(width = Inf)
 airlines_tbl <- tbl(sc, 'airlines')
-airlines_tbl %>% print(width = Inf)
 airports_tbl <- tbl(sc, 'airports')
-airports_tbl %>% print(width = Inf)
 ```
 
 ```{r}
@@ -109,11 +106,11 @@ ggplot() +
       geom_polygon(data = states, aes(x = long, y = lat, fill = region, 
                             group = group), color = "white") + 
       coord_fixed(1.3) + guides(fill=FALSE) +
-  theme(plot.title = element_text(hjust = 0.5)) +
+      theme(plot.title = element_text(hjust = 0.5)) +
       geom_point(data = route_airport, aes(x = lon, y = lat), colour = "red",
                   alpha = 0.5) + 
       labs(x = "Longitude", y = "Latitude", 
-             title = "Top 10 Busiest Routes in 2008", size = "Totle Flights") + 
+             title = "Top 10 Busiest Routes in 2008") + 
       geom_label_repel(data =  route_airport, aes(x = lon, y = lat), 
                        label =  route_airport$airport) +
       geom_curve(data = dest_ori, aes(x = lon.from, y = lat.from, 
@@ -129,12 +126,110 @@ ggplot() +
 (a). Reproduce above plot. Visualize and explain some prominent features you observe. For example, what happened at points 1-5?
 
 ```{r}
+flights_Q3 <- flights_tbl %>% select(year, month, dayofmonth, dayofweek,
+      origin, dest) %>% filter(dest == "LAX" | origin == "LAX") %>% 
+      filter(year >= 1998 && year <= 2008)
+air_traffic <- flights_Q3 %>%
+      group_by(year, month, dayofmonth) %>%
+      summarise(n = n()) %>%
+      collect() %>% 
+      mutate(date = make_date(year = year, month = month, day = dayofmonth))
+ggplot(air_traffic, aes(x = date, y = n)) +
+      geom_line() +
+      labs(x = "Date", y = "Number of Flights", title = "LAX air traffic")
+```
+
+* 
+
+(b). Visualize and explain seasonal effects.
+
+```{r}
+flight_season <- flights_Q3 %>%
+      mutate(season = if_else(month %in% c(12, 1, 2), "winter", 
+                              if_else(month %in% c(3, 4, 5), "spring", 
+                                      if_else(month %in% c(6, 7, 8), "summer",
+                                              if_else(month %in% c(9, 10, 11), 
+                                                      "fall", "")
+                                              )
+                                      )
+                              )
+             ) %>%
+      group_by(year, season) %>%
+      summarise(n = n()) %>%
+      collect()
+ggplot(flight_season, aes(x = as.factor(year), y = n, fill = season)) + 
+  geom_col(stat = "identity", position = "dodge", width = 0.7) + 
+  theme(plot.title = element_text(hjust = 0.5)) +
+  labs(x = "Year", y = "Number of Flights",
+       title = "LAX Air Traffic by Season", fill = "Season") + 
+  scale_fill_brewer(palette = "Set2")
+```
+
+(c). Visualize and explain weekly effects.
+
+```{r}
+flight_week <- flights_Q3 %>%
+  group_by(year, dayofweek) %>%
+  summarise(n = n()) %>%
+  collect()
+ggplot(flight_week, aes(x = as.factor(year), y = n, 
+                        fill = factor(dayofweek, labels = c("Sunday", "Monday", "Tuesday", "Wednesday",  "Thursday", "Friday", "Saturday")))) + 
+  geom_col() + 
+  labs(x = "Year", y = "Number of Flights", fill = "Day",
+       title = "LAX Air Traffic by Day of the Week") + 
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_fill_brewer(palette = "Set2")
+```
+
+(d). Map top 10 destinations from LAX. Size of dots should reflect the number of flights from LAX to that destination.
+
+```{r}
+LAX <- flights2008 %>% filter(origin == "LAX") %>% group_by(dest) %>%
+      summarise(n = n()) %>% arrange(desc(n)) %>% collect()
+destLAX <- airports %>% filter(faa %in% LAX$dest) %>% collect()
+oriLAX <- left_join(destLAX, LAX, by = c("faa" = "dest")) %>%
+  mutate(lat = as.numeric(lat), lon = as.numeric(lon)) %>% 
+  arrange(desc(n)) %>% collect() %>%
+  head(10)
+
+ggplot() +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  geom_polygon(data = states, aes(x = states$lon, y = states$lat, fill = region, 
+                                  group = group), color = "white") +
+  geom_point(data = oriLAX, aes(x = lon, y = lat, size = n)) +
+  labs(x = "Longitude", y = "Latitude", 
+        title = "Top 10 Destinations from LAX", size = "Total Flights") +
+  geom_label_repel(data = oriLAX, aes(x = lon, y = lat, label = faa)) +
+  coord_fixed(1.3) + guides(fill = FALSE)
+```
+
+4. Build a predictive model for the arrival delay (`arrdelay`) of flights flying from LAX. Use the same filtering criteria as in the [lecture notes](http://hua-zhou.github.io/teaching/biostatm280-2018winter/slides/12-sparklyr/sparklyr-flights.html) to construct training and validation sets. You are allowed to use a maximum of 5 predictors. The prediction performance of your model on the validation data set will be an important factor for grading this question.
+
+```{r}
 
 ```
 
+5. Visualize and explain any other information you want to explore.
 
+```{r}
+SEA <- flights2008 %>% filter(origin == "SEA") %>% group_by(dest) %>%
+      summarise(n = n()) %>% arrange(desc(n)) %>% collect()
+destSEA <- airports %>% filter(faa %in% SEA$dest) %>% collect()
+oriSEA <- left_join(destSEA, SEA, by = c("faa" = "dest")) %>%
+  mutate(lat = as.numeric(lat), lon = as.numeric(lon)) %>% 
+  arrange(desc(n)) %>% collect() %>%
+  head(10)
 
-
+ggplot() +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  geom_polygon(data = states, aes(x = states$lon, y = states$lat, fill = region, 
+                                  group = group), color = "white") +
+  geom_point(data = oriSEA, aes(x = lon, y = lat, size = n)) +
+  labs(x = "Longitude", y = "Latitude", 
+        title = "Top 10 Destinations from SEA", size = "Total Flights") +
+  geom_label_repel(data = oriSEA, aes(x = lon, y = lat, label = faa)) +
+  coord_fixed(1.3) + guides(fill = FALSE)
+```
 
 
 
