@@ -206,6 +206,59 @@ ggplot() +
 4. Build a predictive model for the arrival delay (`arrdelay`) of flights flying from LAX. Use the same filtering criteria as in the [lecture notes](http://hua-zhou.github.io/teaching/biostatm280-2018winter/slides/12-sparklyr/sparklyr-flights.html) to construct training and validation sets. You are allowed to use a maximum of 5 predictors. The prediction performance of your model on the validation data set will be an important factor for grading this question.
 
 ```{r}
+model_data <- flights_tbl %>% filter(origin == "LAX") %>%
+    filter(!is.na(arrdelay) & !is.na(depdelay) & !is.na(distance)) %>%
+    filter(depdelay > 15 & depdelay < 240) %>%
+    filter(arrdelay > -60 & arrdelay < 360) %>%
+    filter(year >= 2003 & year <= 2007) %>%
+    left_join(airlines_tbl, by = c("uniquecarrier" = "code")) %>%
+    select(year, month, arrdelay, depdelay, distance, uniquecarrier, 
+           description)
+
+# Summarize data by carrier
+model_data %>%
+  group_by(uniquecarrier, month) %>%
+  summarize(description = min(description, na.rm = TRUE), 
+            arrdelay = mean(arrdelay, na.rm = TRUE), 
+            distance = mean(distance, na.rm = TRUE), 
+            depdelay = mean(depdelay, na.rm = TRUE)) %>%
+  select(description, arrdelay, distance, depdelay) %>%
+  arrange(arrdelay)
+
+# Partition the data into training and validation sets
+model_partition <- model_data %>% 
+  sdf_partition(train = 0.75, valid = 0.25, seed = 4132)
+
+# Fit a linear model
+ml1 <- model_partition$train %>%
+    ml_linear_regression(arrdelay ~ month + distance + depdelay + uniquecarrier)
+
+# Summarize the linear model
+summary(ml1)
+
+# Calculate average arrdelay by predicted decile
+model_deciles <- lapply(model_partition, function(x) {
+    sdf_predict(ml1, x) %>%
+      mutate(decile = ntile(desc(prediction), 10)) %>%
+      group_by(decile) %>%
+      summarize(arrdelay = mean(arrdelay, na.rm = TRUE)) %>%
+      select(decile, arrdelay) %>%
+      collect()
+})
+
+# Create a summary dataset for plotting
+deciles <- rbind(
+  data.frame(data = 'train', model_deciles$train),
+  data.frame(data = 'valid', model_deciles$valid),
+  make.row.names = FALSE
+)
+
+# Plot average gains by predicted decile
+deciles %>%
+  ggplot(aes(factor(decile), gain, fill = data)) +
+  geom_bar(stat = 'identity', position = 'dodge') +
+  labs(title = 'Average arrdelay by predicted decile', x = 'Decile', 
+       y = 'Minutes')
 
 ```
 
