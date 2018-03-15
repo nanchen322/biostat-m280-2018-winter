@@ -58,7 +58,8 @@ combine <- bind_rows(dest, origin) %>%
 
 # pick out airports info for top 10
 infotop10 <- airports %>% filter(faa %in% combine$airport) %>% collect()
-    
+
+# complete info for top 10 airports
 top10 <- left_join(combine, infotop10, by = c("airport" = "faa")) %>%
       transmute(airport = airport, totflights = sum, lat = as.numeric(lat), 
                 lon = as.numeric(lon), name = name)
@@ -75,3 +76,69 @@ ggplot() +
   geom_label_repel(data = top10, aes(x = lon, y = lat, label = airport)) +
   coord_fixed(1.3) + guides(fill = FALSE)
 ```
+
+2. Map the top 10 busiest direct routes. Size of lines should reflect the number of flights through that route.
+
+```{r}
+# top 10 direct routes
+route <- flights2008 %>% group_by(origin, dest) %>%
+      summarise(n = n()) %>% collect() %>% arrange(desc(n)) %>%
+      head(10)
+# destination and origin information
+destinfo <- airports %>% filter(faa %in% route$dest) %>% collect() 
+dest10 <- left_join(route, destinfo, by = c("dest" = "faa"))
+
+oriinfo <- airports %>% filter(faa %in% route$origin) %>% collect() 
+dest_ori <- left_join(dest10, oriinfo, by = c("origin" = "faa"))
+dest_ori$scale <- (dest_ori$n / max(dest_ori$n))^10
+dest_ori <- dest_ori %>% transmute(dest, lat.to = as.numeric(lat.x),
+                      lat.from = as.numeric(lat.y), lon.to = as.numeric(lon.x),
+                      lon.from = as.numeric(lon.y), n, scale)
+# airport info
+comroute <- c(route$origin, route$dest)
+route_airport <- as.data.frame(unique(comroute))
+colnames(route_airport) <- "airport"
+
+route_airport <- left_join(route_airport, oriinfo, by = c("airport" = "faa"))
+route_airport <- route_airport %>% transmute(lon = as.numeric(lon), 
+                          lat = as.numeric(lat), airport, name)
+
+usa <- map_data("usa")
+states <- map_data("state")
+ggplot() + 
+      geom_polygon(data = states, aes(x = long, y = lat, fill = region, 
+                            group = group), color = "white") + 
+      coord_fixed(1.3) + guides(fill=FALSE) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+      geom_point(data = route_airport, aes(x = lon, y = lat), colour = "red",
+                  alpha = 0.5) + 
+      labs(x = "Longitude", y = "Latitude", 
+             title = "Top 10 Busiest Routes in 2008", size = "Totle Flights") + 
+      geom_label_repel(data =  route_airport, aes(x = lon, y = lat), 
+                       label =  route_airport$airport) +
+      geom_curve(data = dest_ori, aes(x = lon.from, y = lat.from, 
+                                      xend = lon.to, yend = lat.to),
+                 arrow = arrow(angle = 15, ends = "first", 
+                               length = unit(0.2, "cm"), type = "closed"), 
+                 size = dest_ori$scale, alpha = 0.7, 
+                 curvature = 0.2, inherit.aes = TRUE) +
+      scale_size_continuous(range=c(1, 20)) + coord_fixed(1.3)
+```
+
+3. LAX:  
+(a). Reproduce above plot. Visualize and explain some prominent features you observe. For example, what happened at points 1-5?
+
+```{r}
+
+```
+
+
+
+
+
+
+
+
+
+
+
