@@ -1,0 +1,357 @@
+---
+title: "hw4"
+output: html_document
+author: Nan Chen
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# Access the Yarn cluster
+options(scipen=200)
+if (!require("pacman"))  
+  install.packages("pacman", repos = "http://cran.us.r-project.org/")
+library(pacman)
+p_load("sparklyr", "dplyr", "ggplot2", "ggmap", "maps", "mapdata", 
+           "devtools", "ggrepel", "lubridate", "RColorBrewer")
+Sys.setenv(SPARK_HOME="/usr/lib/spark")
+config <- spark_config()
+sc <- spark_connect(master = "yarn-client", config = config)
+```
+
+```{r}
+# Connect the Hive tables
+flights_tbl <- tbl(sc, 'flights')
+airlines_tbl <- tbl(sc, 'airlines')
+airports_tbl <- tbl(sc, 'airports')
+```
+
+```{r}
+# Extract data in 2008
+flights2008 <- flights_tbl %>% filter(origin != "Origin") %>%
+  select(year, origin, dest) %>% filter(year == 2008)
+
+airports <- airports_tbl %>% select(name, faa, lat, lon)
+
+# Destination with # of flights
+dest <- dplyr::left_join(flights2008, airports, by = c("dest" = "faa")) %>%
+  group_by(dest) %>% summarise(n = n()) %>% collect() %>% arrange(desc(n)) %>%
+  select("airport" = dest, n)
+
+# Origin with # of flights
+origin <- dplyr::left_join(flights2008, airports, by = c("origin" = "faa")) %>%
+  group_by(origin) %>% summarise(n = n()) %>% collect() %>% arrange(desc(n)) %>%
+  select("airport" = origin, n)
+```
+
+1. Map the top 10 busiest airports. Size of dots should reflect the number of flights through that destination.  
+
+```{r}
+# Add dest and origin together and print out top 10
+combine <- bind_rows(dest, origin) %>%
+  group_by(airport) %>% summarise(sum = sum(n)) %>% arrange(desc(sum)) %>%
+  head(10)
+
+# Pick out airports info for top 10
+infotop10 <- airports %>% filter(faa %in% combine$airport) %>% collect()
+
+# Complete info for top 10 airports
+top10 <- left_join(combine, infotop10, by = c("airport" = "faa")) %>%
+      transmute(airport = airport, totflights = sum, lat = as.numeric(lat), 
+                lon = as.numeric(lon), name = name)
+
+usa <- map_data("usa")
+states <- map_data("state")
+ggplot() +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  geom_polygon(data = states, aes(x = states$lon, y = states$lat, fill = region, 
+                                  group = group), color = "white") +
+  geom_point(data = top10, aes(x = lon, y = lat, size = totflights)) +
+  labs(x = "Longitude", y = "Latitude", 
+        title = "Top 10 Busiest Airports in 2008", size = "Total Flights") +
+  geom_label_repel(data = top10, aes(x = lon, y = lat, label = airport)) +
+  coord_fixed(1.3) + guides(fill = FALSE)
+```
+
+* According to the output, the busiest airport in 2008 is ATL, following by ORD, DFW, DEN, LAX, PHX, LAS, IAH, DTW, SFO. 
+
+2. Map the top 10 busiest direct routes. Size of lines should reflect the number of flights through that route.
+
+```{r}
+# Top 10 direct routes
+route <- flights2008 %>% group_by(origin, dest) %>%
+      summarise(n = n()) %>% collect() %>% arrange(desc(n)) %>%
+      head(10)
+# Destination and origin information
+destinfo <- airports %>% filter(faa %in% route$dest) %>% collect() 
+dest10 <- left_join(route, destinfo, by = c("dest" = "faa"))
+
+oriinfo <- airports %>% filter(faa %in% route$origin) %>% collect() 
+dest_ori <- left_join(dest10, oriinfo, by = c("origin" = "faa"))
+dest_ori$scale <- (dest_ori$n / max(dest_ori$n))^10
+dest_ori <- dest_ori %>% transmute(dest, lat.to = as.numeric(lat.x),
+                      lat.from = as.numeric(lat.y), lon.to = as.numeric(lon.x),
+                      lon.from = as.numeric(lon.y), n, scale)
+# Airport info
+comroute <- c(route$origin, route$dest)
+route_airport <- as.data.frame(unique(comroute))
+colnames(route_airport) <- "airport"
+
+route_airport <- left_join(route_airport, oriinfo, by = c("airport" = "faa"))
+route_airport <- route_airport %>% transmute(lon = as.numeric(lon), 
+                          lat = as.numeric(lat), airport, name)
+
+usa <- map_data("usa")
+states <- map_data("state")
+ggplot() + 
+      geom_polygon(data = states, aes(x = long, y = lat, fill = region, 
+                            group = group), color = "white") + 
+      coord_fixed(1.3) + guides(fill=FALSE) +
+      theme(plot.title = element_text(hjust = 0.5)) +
+      geom_point(data = route_airport, aes(x = lon, y = lat), colour = "red",
+                  alpha = 0.5) + 
+      labs(x = "Longitude", y = "Latitude", 
+             title = "Top 10 Busiest Routes in 2008") + 
+      geom_label_repel(data =  route_airport, aes(x = lon, y = lat), 
+                       label =  route_airport$airport) +
+      geom_curve(data = dest_ori, aes(x = lon.from, y = lat.from, 
+                                      xend = lon.to, yend = lat.to),
+                 arrow = arrow(angle = 15, ends = "first", 
+                               length = unit(0.2, "cm"), type = "closed"), 
+                 size = dest_ori$scale, alpha = 0.7, 
+                 curvature = 0.15, inherit.aes = TRUE) 
+```
+
+* According to the output, the busiest route in 2008 is SFO-LAX. 
+
+3. LAX:
+(a). Reproduce above plot. Visualize and explain some prominent features you observe. For example, what happened at points 1-5?
+
+```{r}
+flights_Q3 <- flights_tbl %>% select(year, month, dayofmonth, dayofweek,
+      origin, dest) %>% filter(dest == "LAX" | origin == "LAX") %>% 
+      filter(year >= 1998 && year <= 2008)
+air_traffic <- flights_Q3 %>%
+      group_by(year, month, dayofmonth) %>%
+      summarise(n = n()) %>%
+      collect() %>% 
+      mutate(date = make_date(year = year, month = month, day = dayofmonth))
+
+# Create 5 labels for the turning points
+dates <- c("2001-09-11", "2004-11-25", "2004-07-04", "2008-01-01", 
+           "2001-01-01")
+nf <- c(1100, 1000, 1050, 1200, 1200)
+num_lab <- c("1", "2", "3", "4", "5")
+labels <- data.frame(num_lab, dates, nf)
+
+ggplot(air_traffic, aes(x = date, y = n)) +
+  geom_line() +
+  labs(x = "Date", y = "Number of Flights", title = "LAX air traffic") +
+  geom_label(data = labels, aes(x = as.Date(dates, "%Y-%m-%d"), y = nf, 
+                                label = num_lab), size = 5) + coord_fixed(1.4)
+```
+
+* `Lable 1` drops dramatically mainly because of the terrorists attack thing. So people were scared of taking flights. `Lable 2` and `Lable 3` drops mainly because of the holidays. So people do not want to travel. `Lable 4` drops dramatically probably because of the global financial crisis. So people didn't have too much money to spend on travelling around. `Lable 5` pops up a lot maybe due to a good economic environment. So people want to spend more money on travelling.
+
+(b). Visualize and explain seasonal effects.
+
+```{r}
+flight_season <- flights_Q3 %>%
+      mutate(season = if_else(month %in% c(12, 1, 2), "winter", 
+                              if_else(month %in% c(3, 4, 5), "spring", 
+                                      if_else(month %in% c(6, 7, 8), "summer",
+                                              if_else(month %in% c(9, 10, 11), 
+                                                      "fall", "")
+                                              )
+                                      )
+                              )
+             ) %>%
+      group_by(year, season) %>%
+      summarise(n = n()) %>%
+      collect()
+ggplot(flight_season, aes(x = as.factor(year), y = n, fill = season)) + 
+  geom_col(stat = "identity", position = "dodge", width = 0.7) + 
+  theme(plot.title = element_text(hjust = 0.5)) +
+  labs(x = "Year", y = "Number of Flights",
+       title = "LAX Air Traffic by Season", fill = "Season") + 
+  scale_fill_brewer(palette = "Set2")
+```
+
+* According to the output, summer usually has the most air traffic at LAX across year 1998 to 2008.
+
+(c). Visualize and explain weekly effects.
+
+```{r}
+flight_week <- flights_Q3 %>%
+  group_by(year, dayofweek) %>%
+  summarise(n = n()) %>%
+  collect()
+ggplot(flight_week, aes(x = as.factor(year), y = n, 
+                        fill = factor(dayofweek, labels = c("Sunday", "Monday", "Tuesday", "Wednesday",  "Thursday", "Friday", "Saturday")))) + 
+  geom_col() + 
+  labs(x = "Year", y = "Number of Flights", fill = "Day",
+       title = "LAX Air Traffic by Day of the Week") + 
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_fill_brewer(palette = "Set2")
+```
+
+* According to the output for LAX air traffic, people tend to take airplanes on weekends across year 1998 to 2008.
+
+(d). Map top 10 destinations from LAX. Size of dots should reflect the number of flights from LAX to that destination.
+
+```{r}
+LAX <- flights2008 %>% filter(origin == "LAX") %>% group_by(dest) %>%
+      summarise(n = n()) %>% arrange(desc(n)) %>% collect()
+destLAX <- airports %>% filter(faa %in% LAX$dest) %>% collect()
+oriLAX <- left_join(destLAX, LAX, by = c("faa" = "dest")) %>%
+  mutate(lat = as.numeric(lat), lon = as.numeric(lon)) %>% 
+  arrange(desc(n)) %>% collect() %>%
+  head(10)
+
+ggplot() +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  geom_polygon(data = states, aes(x = states$lon, y = states$lat, fill = region, 
+                                  group = group), color = "white") +
+  geom_point(data = oriLAX, aes(x = lon, y = lat, size = n)) +
+  labs(x = "Longitude", y = "Latitude", 
+        title = "Top 10 Destinations from LAX", size = "Total Flights") +
+  geom_label_repel(data = oriLAX, aes(x = lon, y = lat, label = faa)) +
+  coord_fixed(1.3) + guides(fill = FALSE)
+```
+
+* The output shows that SFO is the first destinations travelling from LAX.
+
+4. Build a predictive model for the arrival delay (`arrdelay`) of flights flying from LAX. Use the same filtering criteria as in the [lecture notes](http://hua-zhou.github.io/teaching/biostatm280-2018winter/slides/12-sparklyr/sparklyr-flights.html) to construct training and validation sets. You are allowed to use a maximum of 5 predictors. The prediction performance of your model on the validation data set will be an important factor for grading this question.
+
+```{r}
+model_data <- flights_tbl %>% filter(origin == "LAX") %>%
+    filter(!is.na(arrdelay) & !is.na(depdelay) & !is.na(distance)) %>%
+    filter(depdelay > 15 & depdelay < 240) %>%
+    filter(arrdelay > -60 & arrdelay < 360) %>%
+    filter(year >= 2003 & year <= 2007) %>%
+    left_join(airlines_tbl, by = c("uniquecarrier" = "code")) %>%
+    select(year, month, arrdelay, depdelay, distance, uniquecarrier, 
+           description)
+
+# Summarize data by carrier
+model_data %>%
+  group_by(uniquecarrier) %>%
+  summarize(description = min(description, na.rm = TRUE), 
+            arrdelay = mean(arrdelay, na.rm = TRUE), 
+            distance = mean(distance, na.rm = TRUE), 
+            depdelay = mean(depdelay, na.rm = TRUE)) %>%
+  select(description, arrdelay, distance, depdelay) %>%
+  arrange(arrdelay)
+
+# Partition the data into training and validation sets
+model_partition <- model_data %>% 
+  sdf_partition(train = 0.8, valid = 0.2, seed = 5555)
+
+# Fit a linear model
+ml1 <- model_partition$train %>%
+    ml_linear_regression(arrdelay ~ distance + depdelay + uniquecarrier)
+
+# Summarize the linear model
+summary(ml1)
+
+# Get mse for valid
+sdf_predict(ml1, model_partition$valid) %>%
+  mutate(res = prediction - arrdelay) %>%
+  summarise(mse = mean(res^2, na.rm = TRUE))
+```
+
+* My model is arrdelay ~ distance + depdelay + uniquecarrier. The root mean squared error for train data is `13.33`; MSE for valid data is `179.91`.
+
+```{r}
+# Assess model performance
+# Calculate average arrdelay by predicted decile
+model_deciles <- lapply(model_partition, function(x) {
+    sdf_predict(ml1, x) %>%
+      mutate(decile = ntile(desc(prediction), 10)) %>%
+      group_by(decile) %>%
+      summarize(arrdelay = mean(arrdelay, na.rm = TRUE)) %>%
+      select(decile, arrdelay) %>%
+      collect()
+  })
+
+# Create a summary dataset for plotting
+deciles <- rbind(
+  data.frame(data = 'train', model_deciles$train),
+  data.frame(data = 'valid', model_deciles$valid),
+  make.row.names = FALSE
+)
+# Plot average arrdelay by predicted decile
+deciles %>%
+  ggplot(aes(factor(decile), arrdelay, fill = data)) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  geom_bar(stat = 'identity', position = 'dodge') +
+  labs(title = 'Average arrdelay by predicted decile', x = 'Decile', 
+       y = 'Minutes')
+
+# Predict performance
+# Select data from an out of time sample
+data_2008 <- flights_tbl %>% filter(origin == "LAX") %>%
+  filter(!is.na(arrdelay) & !is.na(depdelay) & !is.na(distance)) %>%
+  filter(depdelay > 15 & depdelay < 240) %>%
+  filter(arrdelay > -60 & arrdelay < 360) %>%
+  filter(year == 2008) %>%
+  left_join(airlines_tbl, by = c("uniquecarrier" = "code")) %>%
+  select(year, month, arrdelay, depdelay, distance, uniquecarrier, description, 
+         origin, dest)
+
+# Summarize data by carrier
+carrier <- sdf_predict(ml1, data_2008) %>%
+  group_by(description) %>%
+  summarize(arrdelay = mean(arrdelay, na.rm = TRUE), 
+            prediction = mean(prediction, na.rm = TRUE), freq = n()) %>%
+  filter(freq > 100) %>%
+  collect()
+
+# Get mse for test
+sdf_predict(ml1, data_2008) %>%
+  mutate(res = prediction - arrdelay) %>%
+  summarise(mse = mean(res^2, na.rm = TRUE))
+
+# Plot actual arrdelay and predicted arrdelay by airline carrier
+ggplot(carrier, aes(arrdelay, prediction)) + 
+  theme(plot.title = element_text(hjust = 0.5)) +
+  geom_point(alpha = 0.75, color = 'red', shape = 3) +
+  geom_abline(intercept = 0, slope = 1, alpha = 0.15, color = 'blue') +
+  geom_text(aes(label = substr(description, 1, 20)), size = 3, alpha = 0.75, 
+            vjust = -1) +
+  labs(title='Average Arrival Delay Forecast', x = 'Actual', y = 'Predicted')
+```
+
+* MSE for test data is `203.03`. It is very close to the validation mse, so I can say that overfitting is avoided.
+
+5. Visualize and explain any other information you want to explore.
+
+```{r}
+SEA <- flights2008 %>% filter(origin == "SEA") %>% group_by(dest) %>%
+      summarise(n = n()) %>% arrange(desc(n)) %>% collect()
+destSEA <- airports %>% filter(faa %in% SEA$dest) %>% collect()
+oriSEA <- left_join(destSEA, SEA, by = c("faa" = "dest")) %>%
+  mutate(lat = as.numeric(lat), lon = as.numeric(lon)) %>% 
+  arrange(desc(n)) %>% collect() %>%
+  head(10)
+
+ggplot() +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  geom_polygon(data = states, aes(x = states$lon, y = states$lat, fill = region, 
+                                  group = group), color = "white") +
+  geom_point(data = oriSEA, aes(x = lon, y = lat, size = n)) +
+  labs(x = "Longitude", y = "Latitude", 
+        title = "Top 10 Destinations from SEA", size = "Total Flights") +
+  geom_label_repel(data = oriSEA, aes(x = lon, y = lat, label = faa)) +
+  coord_fixed(1.3) + guides(fill = FALSE)
+```
+
+* The output shows that LAX is the first destinations travelling from SEA.
+
+
+
+
+
+
