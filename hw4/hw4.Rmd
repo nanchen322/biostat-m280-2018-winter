@@ -8,7 +8,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
-# access the Yarn cluster
+# Access the Yarn cluster
 options(scipen=200)
 if (!require("pacman"))  
   install.packages("pacman", repos = "http://cran.us.r-project.org/")
@@ -21,25 +21,25 @@ sc <- spark_connect(master = "yarn-client", config = config)
 ```
 
 ```{r}
-# connect the Hive tables
+# Connect the Hive tables
 flights_tbl <- tbl(sc, 'flights')
 airlines_tbl <- tbl(sc, 'airlines')
 airports_tbl <- tbl(sc, 'airports')
 ```
 
 ```{r}
-# extract data in 2008
+# Extract data in 2008
 flights2008 <- flights_tbl %>% filter(origin != "Origin") %>%
   select(year, origin, dest) %>% filter(year == 2008)
 
 airports <- airports_tbl %>% select(name, faa, lat, lon)
 
-# destination with # of flights
+# Destination with # of flights
 dest <- dplyr::left_join(flights2008, airports, by = c("dest" = "faa")) %>%
   group_by(dest) %>% summarise(n = n()) %>% collect() %>% arrange(desc(n)) %>%
   select("airport" = dest, n)
 
-# origin with # of flights
+# Origin with # of flights
 origin <- dplyr::left_join(flights2008, airports, by = c("origin" = "faa")) %>%
   group_by(origin) %>% summarise(n = n()) %>% collect() %>% arrange(desc(n)) %>%
   select("airport" = origin, n)
@@ -48,15 +48,15 @@ origin <- dplyr::left_join(flights2008, airports, by = c("origin" = "faa")) %>%
 
 1. Map the top 10 busiest airports. Size of dots should reflect the number of flights through that destination.  
 ```{r}
-# add dest and origin together and print out top 10
+# Add dest and origin together and print out top 10
 combine <- bind_rows(dest, origin) %>%
   group_by(airport) %>% summarise(sum = sum(n)) %>% arrange(desc(sum)) %>%
   head(10)
 
-# pick out airports info for top 10
+# Pick out airports info for top 10
 infotop10 <- airports %>% filter(faa %in% combine$airport) %>% collect()
 
-# complete info for top 10 airports
+# Complete info for top 10 airports
 top10 <- left_join(combine, infotop10, by = c("airport" = "faa")) %>%
       transmute(airport = airport, totflights = sum, lat = as.numeric(lat), 
                 lon = as.numeric(lon), name = name)
@@ -77,11 +77,11 @@ ggplot() +
 2. Map the top 10 busiest direct routes. Size of lines should reflect the number of flights through that route.
 
 ```{r}
-# top 10 direct routes
+# Top 10 direct routes
 route <- flights2008 %>% group_by(origin, dest) %>%
       summarise(n = n()) %>% collect() %>% arrange(desc(n)) %>%
       head(10)
-# destination and origin information
+# Destination and origin information
 destinfo <- airports %>% filter(faa %in% route$dest) %>% collect() 
 dest10 <- left_join(route, destinfo, by = c("dest" = "faa"))
 
@@ -91,7 +91,7 @@ dest_ori$scale <- (dest_ori$n / max(dest_ori$n))^10
 dest_ori <- dest_ori %>% transmute(dest, lat.to = as.numeric(lat.x),
                       lat.from = as.numeric(lat.y), lon.to = as.numeric(lon.x),
                       lon.from = as.numeric(lon.y), n, scale)
-# airport info
+# Airport info
 comroute <- c(route$origin, route$dest)
 route_airport <- as.data.frame(unique(comroute))
 colnames(route_airport) <- "airport"
@@ -118,8 +118,7 @@ ggplot() +
                  arrow = arrow(angle = 15, ends = "first", 
                                length = unit(0.2, "cm"), type = "closed"), 
                  size = dest_ori$scale, alpha = 0.7, 
-                 curvature = 0.2, inherit.aes = TRUE) +
-      scale_size_continuous(range=c(1, 20)) + coord_fixed(1.3)
+                 curvature = 0.15, inherit.aes = TRUE) 
 ```
 
 3. LAX:  
@@ -134,12 +133,22 @@ air_traffic <- flights_Q3 %>%
       summarise(n = n()) %>%
       collect() %>% 
       mutate(date = make_date(year = year, month = month, day = dayofmonth))
+
+# Create 5 labels for the turning points
+dates <- c("2001-09-11", "2004-11-25", "2004-07-04", "2008-01-01", 
+           "2001-01-01")
+nf <- c(1100, 1000, 1050, 1200, 1200)
+num_lab <- c("1", "2", "3", "4", "5")
+labels <- data.frame(num_lab, dates, nf)
+
 ggplot(air_traffic, aes(x = date, y = n)) +
-      geom_line() +
-      labs(x = "Date", y = "Number of Flights", title = "LAX air traffic")
+  geom_line() +
+  labs(x = "Date", y = "Number of Flights", title = "LAX air traffic") +
+  geom_label(data = labels, aes(x = as.Date(dates, "%Y-%m-%d"), y = nf, 
+                                label = num_lab), size = 5) + coord_fixed(1.4)
 ```
 
-* 
+* `Lable 1` drops dramatically mainly because of the terrorists attack thing. So people were scared of taking flights. `Lable 2` pops up a little bit maybe due to the national day. `Lable 3` pops up maybe because of the holiday. `Lable 4` drops dramatically probably because of the global financial crisis. So people didn't have too much money to spend on travelling around. `Lable 5` pops up a lot maybe due to a good economic environment. So people want to spend more money on travelling.
 
 (b). Visualize and explain seasonal effects.
 
@@ -217,7 +226,7 @@ model_data <- flights_tbl %>% filter(origin == "LAX") %>%
 
 # Summarize data by carrier
 model_data %>%
-  group_by(uniquecarrier, month) %>%
+  group_by(uniquecarrier) %>%
   summarize(description = min(description, na.rm = TRUE), 
             arrdelay = mean(arrdelay, na.rm = TRUE), 
             distance = mean(distance, na.rm = TRUE), 
@@ -227,15 +236,25 @@ model_data %>%
 
 # Partition the data into training and validation sets
 model_partition <- model_data %>% 
-  sdf_partition(train = 0.75, valid = 0.25, seed = 4132)
+  sdf_partition(train = 0.8, valid = 0.2, seed = 5555)
 
 # Fit a linear model
 ml1 <- model_partition$train %>%
-    ml_linear_regression(arrdelay ~ month + distance + depdelay + uniquecarrier)
+    ml_linear_regression(arrdelay ~ distance + depdelay + uniquecarrier)
 
 # Summarize the linear model
 summary(ml1)
 
+# Get mse for valid
+sdf_predict(ml1, model_partition$valid) %>%
+  mutate(res = prediction - arrdelay) %>%
+  summarise(mse = mean(res^2, na.rm = TRUE))
+```
+
+* Root Mean Squared Error for train data is `13.33`; MSE for valid data is `179.91`.
+
+```{r}
+# Assess model performance
 # Calculate average arrdelay by predicted decile
 model_deciles <- lapply(model_partition, function(x) {
     sdf_predict(ml1, x) %>%
@@ -244,7 +263,7 @@ model_deciles <- lapply(model_partition, function(x) {
       summarize(arrdelay = mean(arrdelay, na.rm = TRUE)) %>%
       select(decile, arrdelay) %>%
       collect()
-})
+  })
 
 # Create a summary dataset for plotting
 deciles <- rbind(
@@ -252,15 +271,49 @@ deciles <- rbind(
   data.frame(data = 'valid', model_deciles$valid),
   make.row.names = FALSE
 )
-
-# Plot average gains by predicted decile
+# Plot average arrdelay by predicted decile
 deciles %>%
-  ggplot(aes(factor(decile), gain, fill = data)) +
+  ggplot(aes(factor(decile), arrdelay, fill = data)) +
+  theme(plot.title = element_text(hjust = 0.5)) +
   geom_bar(stat = 'identity', position = 'dodge') +
   labs(title = 'Average arrdelay by predicted decile', x = 'Decile', 
        y = 'Minutes')
 
+# Predict performance
+# Select data from an out of time sample
+data_2008 <- flights_tbl %>% filter(origin == "LAX") %>%
+  filter(!is.na(arrdelay) & !is.na(depdelay) & !is.na(distance)) %>%
+  filter(depdelay > 15 & depdelay < 240) %>%
+  filter(arrdelay > -60 & arrdelay < 360) %>%
+  filter(year == 2008) %>%
+  left_join(airlines_tbl, by = c("uniquecarrier" = "code")) %>%
+  select(year, month, arrdelay, depdelay, distance, uniquecarrier, description, 
+         origin, dest)
+
+# Summarize data by carrier
+carrier <- sdf_predict(ml1, data_2008) %>%
+  group_by(description) %>%
+  summarize(arrdelay = mean(arrdelay, na.rm = TRUE), 
+            prediction = mean(prediction, na.rm = TRUE), freq = n()) %>%
+  filter(freq > 100) %>%
+  collect()
+
+# Get mse for test
+sdf_predict(ml1, data_2008) %>%
+  mutate(res = prediction - arrdelay) %>%
+  summarise(mse = mean(res^2, na.rm = TRUE))
+
+# Plot actual arrdelay and predicted arrdelay by airline carrier
+ggplot(carrier, aes(arrdelay, prediction)) + 
+  theme(plot.title = element_text(hjust = 0.5)) +
+  geom_point(alpha = 0.75, color = 'red', shape = 3) +
+  geom_abline(intercept = 0, slope = 1, alpha = 0.15, color = 'blue') +
+  geom_text(aes(label = substr(description, 1, 20)), size = 3, alpha = 0.75, 
+            vjust = -1) +
+  labs(title='Average Arrival Delay Forecast', x = 'Actual', y = 'Predicted')
 ```
+
+* MSE for test data is `203.03`.
 
 5. Visualize and explain any other information you want to explore.
 
