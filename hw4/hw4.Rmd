@@ -1,3 +1,4 @@
+---
 title: "hw4"
 output: html_document
 author: Nan Chen
@@ -45,8 +46,8 @@ origin <- dplyr::left_join(flights2008, airports, by = c("origin" = "faa")) %>%
   select("airport" = origin, n)
 ```
 
-
 1. Map the top 10 busiest airports. Size of dots should reflect the number of flights through that destination.  
+
 ```{r}
 # Add dest and origin together and print out top 10
 combine <- bind_rows(dest, origin) %>%
@@ -121,7 +122,7 @@ ggplot() +
                  curvature = 0.15, inherit.aes = TRUE) 
 ```
 
-3. LAX:  
+3. LAX:
 (a). Reproduce above plot. Visualize and explain some prominent features you observe. For example, what happened at points 1-5?
 
 ```{r}
